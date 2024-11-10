@@ -19,6 +19,7 @@ threshold_lane2 = (0, 100)
 #ledGreen = pyb.LED(2) # Initiates the green led
 
 clock = time.clock() # Instantiates a clock object
+count = 0
 
 while(True):
     clock.tick() # Advances the clock
@@ -27,9 +28,7 @@ while(True):
     # Find blobs with a minimal area of 50x50 = 2500 px
     # Overlapping blobs will be merged
     blobs = img.find_blobs([threshold_lane1, threshold_lane2], area_threshold=2500, merge=True)
-    count = 0
-    blob1 =1
-    blob2=2
+    count = count
     # Draw blobs
     for blob in blobs:
         # count up
@@ -54,7 +53,7 @@ while(True):
             img.draw_cross(blob.cx(), blob.cy(), color=(255,0,0))
 
     # Turn on green LED if a lane (a blob) was found
-    if len(blobs) > 0:
+    if len(blobs) > 1:
         #ledGreen.on()
         #ledRed.off()
         #print("There is a lane!")
