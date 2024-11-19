@@ -12,7 +12,7 @@ clock = time.clock()
 
 # Configuration
 CONSECUTIVE_PIXELS = 5  # Number of consecutive pixels below the threshold
-THRESHOLD = 100  # Brightness threshold to detect dark pixels (0-255)
+THRESHOLD = 70  # Brightness threshold to detect dark pixels (0-255)
 
 def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXELS):
     """
@@ -53,17 +53,75 @@ def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXEL
 
     return left_edge, right_edge
 
+def calculate_speed_and_steering(edges):
+    """
+    Calculates motor speed and steering value based on detected road edges.
+
+    Parameters:
+    - edges: List of tuples [(y, left_edge, right_edge), ...] containing edges in different zones.
+
+    Returns:
+    - speed: Motor speed (0 to 100).
+    - steering: Steering (0 to 100, where 0 is fully left and 100 is fully right).
+    """
+    valid_edges = [edge for edge in edges if edge[1] is not None and edge[2] is not None]
+    no_left = [edge for edge in edges if edge[1] is None]
+    no_right = [edge for edge in edges if edge[2] is None]
+
+    # Initialize speed and steering
+    speed = 0
+    steering = 50  # Neutral steering value
+
+    if len(valid_edges) == 0:
+        # No valid edges detected -> Stop
+        return 0, 50  # No road edges: speed = 0, straight steering
+
+    # Calculate the averages of left and right edges
+    avg_left = sum(edge[1] for edge in valid_edges) / len(valid_edges)
+    avg_right = sum(edge[2] for edge in valid_edges) / len(valid_edges)
+
+    # Calculate the midpoint and road width
+    mid_point = (avg_left + avg_right) / 2
+    road_width = avg_right - avg_left
+
+    # Analyze the current road
+    center_deviation = (mid_point - (320 // 2)) / (320 // 2)  # Normalized deviation from the image center
+
+    if road_width < 50 or len(valid_edges) < len(edges) * 0.5:
+        # Intersection or very narrow road -> Slow down
+        speed = 20
+    elif len(no_left) > 0 or len(no_right) > 0:
+        # One edge is missing -> Drive cautiously
+        speed = 30
+    else:
+        # Straight road or normal curve
+        max_deviation = max(abs(edge[1] - edge[2]) for edge in valid_edges)
+        if max_deviation < 50:
+            speed = 100  # Straight road -> Fast
+        else:
+            speed = 50  # Curve -> Slower
+
+    # Calculate steering (0 = fully left, 100 = fully right)
+    steering = int(50 + center_deviation * 50)
+    steering = max(0, min(100, steering))  # Limit to 0-100
+
+    return speed, steering
+
+
 while True:
     clock.tick()
     img = sensor.snapshot()  # Capture an image
 
-    # Define the zones (top, middle, bottom)
-    zones = [20, 70, 120, 170, 220]  # y-coordinates for the zones
-    results = []
+    # Define the y-zones
+    zones = []
+    for y in range(2,22): # The pixels/lines at the very top and bottom are ignored
+            zones.append(y*10)
+
+    edges = []
 
     for y in zones:
         left, right = find_edges(img, y)
-        results.append((y, left, right))
+        edges.append((y, left, right))
 
         # Draw the results on the image
         if left:
@@ -71,12 +129,15 @@ while True:
         if right:
             img.draw_circle(right, y, 5, color=255)  # Mark right edge
 
+    speed, steering = calculate_speed_and_steering(edges)
+    print("Speed: ", speed, " Steering: ", steering)
+
     # Output the results
     #print("Edges detected (y, left_edge, right_edge):", results)
-    print(clock.fps())
+    #print(clock.fps())
 
-    # For testing purposes only. 
-    #time.sleep(1)
+    # Only for testing
+    #time.sleep_ms(100)
 
     # Optional: Save the image with annotations (e.g., for debugging)
     # img.save("output.jpg")
