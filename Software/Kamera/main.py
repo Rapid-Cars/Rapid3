@@ -102,7 +102,7 @@ def calculate_speed_and_steering(edges):
             speed = 50  # Curve -> Slower
 
     # Calculate steering (0 = fully left, 100 = fully right)
-    steering = int(50 + center_deviation * 50)
+    steering = int(50 - center_deviation * 50)
     steering = max(0, min(100, steering))  # Limit to 0-100
 
     return speed, steering
