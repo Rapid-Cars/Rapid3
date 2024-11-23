@@ -107,6 +107,32 @@ def calculate_speed_and_steering(edges):
 
     return speed, steering
 
+def draw_arrow(img, speed, steering):
+    """
+    Draws an arrow on the image to visualize speed and steering.
+    - Speed determines the length of the arrow.
+    - Steering determines the angle of the arrow.
+    """
+    img_width = img.width()
+    img_height = img.height()
+
+    base_x = img_width // 2  # Center of the image horizontally
+    base_y = img_height - 10  # Bottom of the image
+
+    # Calculate arrow length and direction
+    max_length = 200  # Maximum arrow length
+    arrow_length = int((speed / 100) * max_length)
+
+    # Steering angle (0 = 45° left, 50 = vertical, 100 = 45° right)
+    angle_offset = (steering - 50) * 0.45  # Map to degrees
+    angle_radians = angle_offset * (3.14159 / 180)  # Convert to radians
+
+    # Calculate arrow tip coordinates
+    tip_x = int(base_x + arrow_length * -angle_radians)  # Horizontal deviation
+    tip_y = int(base_y - arrow_length)  # Vertical length
+
+    # Draw the arrow on the image
+    img.draw_arrow(base_x, base_y, tip_x, tip_y, color=255, thickness=4)
 
 while True:
     clock.tick()
@@ -131,6 +157,9 @@ while True:
 
     speed, steering = calculate_speed_and_steering(edges)
     print("Speed: ", speed, " Steering: ", steering)
+
+    # Draw the arrow representing speed and steering
+    draw_arrow(img, speed, steering)
 
     # Output the results
     #print("Edges detected (y, left_edge, right_edge):", results)
