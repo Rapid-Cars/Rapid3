@@ -13,15 +13,50 @@ clock = time.clock()
 # Configuration
 CONSECUTIVE_PIXELS = 5  # Number of consecutive pixels below the threshold
 THRESHOLD = 70  # Brightness threshold to detect dark pixels (0-255)
+NO_LANE_THRESHOLD = 5  # Number of elements in the edges_array for it to count as a lane
 
+"""
+    Calculates the average of the array divided into `fraction` parts.
+
+    Parameters:
+    - arr: The array to process (can be empty).
+    - fraction: The denominator specifying the number of parts (e.g., 2, 3, 4).
+
+    Returns:
+    - A list of averages for each segment, or an empty list if the array is empty.
+    """
+def calculate_segment_averages(arr, fraction, index):
+    if not arr:  # Handle empty array
+        return []
+
+    if fraction <= 0 or not isinstance(fraction, int):
+        raise ValueError("Fraction must be a positive integer.")
+
+    length = len(arr)
+    segment_size = length // fraction  # Calculate size of each segment
+
+    indexElements = []
+    for element in arr:
+        indexElements.append(element[index])
+
+    averages = []
+    for i in range(fraction):
+        start = i * segment_size
+        end = start + segment_size if i < fraction - 1 else length
+        segment = indexElements[start:end]
+        avg = sum(segment) / len(segment) if segment else 0
+        averages.append(avg)
+
+    return averages
+
+"""
+Finds edges (dark regions) in a horizontal line.
+- img: The image being analyzed.
+- y: The y-coordinate of the line.
+- threshold: Brightness threshold to detect dark pixels (0-255).
+- consecutive_pixels: Number of pixels that must be below the threshold.
+"""
 def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXELS):
-    """
-    Finds edges (dark regions) in a horizontal line.
-    - img: The image being analyzed.
-    - y: The y-coordinate of the line.
-    - threshold: Brightness threshold to detect dark pixels (0-255).
-    - consecutive_pixels: Number of pixels that must be below the threshold.
-    """
     width = img.width()
     mid_x = width // 2
 
@@ -53,66 +88,76 @@ def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXEL
 
     return left_edge, right_edge
 
+
+"""
+Calculates motor speed and steering value based on detected road edges.
+
+Parameters:
+- edges: List of tuples [(y, left_edge, right_edge), ...] containing edges in different zones.
+
+Returns:
+- speed: Motor speed (0 to 100).
+- steering: Steering (0 to 100, where 0 is fully left and 100 is fully right).
+"""
 def calculate_speed_and_steering(edges):
-    """
-    Calculates motor speed and steering value based on detected road edges.
+    both_edges = [edge for edge in edges if edge[1] is not None and edge[2] is not None]
+    left_edges = [edge for edge in edges if edge[1] is not None]
+    right_edges = [edge for edge in edges if edge[2] is not None]
 
-    Parameters:
-    - edges: List of tuples [(y, left_edge, right_edge), ...] containing edges in different zones.
-
-    Returns:
-    - speed: Motor speed (0 to 100).
-    - steering: Steering (0 to 100, where 0 is fully left and 100 is fully right).
-    """
-    valid_edges = [edge for edge in edges if edge[1] is not None and edge[2] is not None]
-    no_left = [edge for edge in edges if edge[1] is None]
-    no_right = [edge for edge in edges if edge[2] is None]
+    # print("left: ", len(left_edges), ", right: ", len(right_edges), "; valid: ", len(both_edges))
 
     # Initialize speed and steering
     speed = 0
     steering = 50  # Neutral steering value
 
-    if len(valid_edges) == 0:
+    if len(left_edges) == 0 and len(right_edges) == 0:
         # No valid edges detected -> Stop
         return 0, 50  # No road edges: speed = 0, straight steering
 
     # Calculate the averages of left and right edges
-    avg_left = sum(edge[1] for edge in valid_edges) / len(valid_edges)
-    avg_right = sum(edge[2] for edge in valid_edges) / len(valid_edges)
-
-    # Calculate the midpoint and road width
-    mid_point = (avg_left + avg_right) / 2
-    road_width = avg_right - avg_left
+    if len(left_edges) == 0 or len(right_edges) == 0:
+        mid_point = -1
+    else:
+        avg_left = sum(edge[1] for edge in left_edges) / len(left_edges)
+        avg_right = sum(edge[2] for edge in right_edges) / len(right_edges)
+        # Calculate the midpoint
+        mid_point = (avg_left + avg_right) / 2
 
     # Analyze the current road
     center_deviation = (mid_point - (320 // 2)) / (320 // 2)  # Normalized deviation from the image center
 
-    if road_width < 50 or len(valid_edges) < len(edges) * 0.5:
-        # Intersection or very narrow road -> Slow down
+    # ----- Speed Calculation -----
+    if len(both_edges) < NO_LANE_THRESHOLD:
+        # Very little lane markings on both sides -> Slow down
         speed = 20
-    elif len(no_left) > 0 or len(no_right) > 0:
+    elif len(left_edges) < NO_LANE_THRESHOLD or len(right_edges) < NO_LANE_THRESHOLD:
         # One edge is missing -> Drive cautiously
         speed = 30
     else:
-        # Straight road or normal curve
-        max_deviation = max(abs(edge[1] - edge[2]) for edge in valid_edges)
-        if max_deviation < 50:
-            speed = 100  # Straight road -> Fast
-        else:
-            speed = 50  # Curve -> Slower
+        # Many lane markings -> Drive fast
+        speed = 100
 
-    # Calculate steering (0 = fully left, 100 = fully right)
-    steering = int(50 - center_deviation * 50)
+    # ----- Steering Calculation ----
+    steering_factors = []
+    steering_factors.append(center_deviation) # Add the deviation from the center to the steering factors
+
+    left_averages = calculate_segment_averages(left_edges, 3, 1)
+    right_averages = calculate_segment_averages(right_edges, 3, 2)
+
+    # ToDo: Use left_averages and right_averages to calculate the direction of the road to optimize the steering
+
+    steering = int(50 - center_deviation * 50) #ToDo: Remove this
     steering = max(0, min(100, steering))  # Limit to 0-100
 
     return speed, steering
 
+
+"""
+Draws an arrow on the image to visualize speed and steering.
+- Speed determines the length of the arrow.
+- Steering determines the angle of the arrow.
+"""
 def draw_arrow(img, speed, steering):
-    """
-    Draws an arrow on the image to visualize speed and steering.
-    - Speed determines the length of the arrow.
-    - Steering determines the angle of the arrow.
-    """
     img_width = img.width()
     img_height = img.height()
 
@@ -134,14 +179,15 @@ def draw_arrow(img, speed, steering):
     # Draw the arrow on the image
     img.draw_arrow(base_x, base_y, tip_x, tip_y, color=255, thickness=4)
 
-while True:
-    clock.tick()
-    img = sensor.snapshot()  # Capture an image
-
+"""
+Finds the borders of the road at specific y positions.
+Additionally draws circles at the found borders
+"""
+def find_border(img):
     # Define the y-zones
     zones = []
-    for y in range(2,22): # The pixels/lines at the very top and bottom are ignored
-            zones.append(y*10)
+    for y in range(2, 22):  # The pixels/lines at the very top and bottom are ignored
+        zones.append(y * 10)
 
     edges = []
 
@@ -154,9 +200,18 @@ while True:
             img.draw_circle(left, y, 5, color=255)  # Mark left edge
         if right:
             img.draw_circle(right, y, 5, color=255)  # Mark right edge
+    return edges
 
-    speed, steering = calculate_speed_and_steering(edges)
-    print("Speed: ", speed, " Steering: ", steering)
+
+# main loop
+while True:
+    clock.tick()
+    img = sensor.snapshot()  # Capture an image
+
+    border = find_border(img)
+
+    speed, steering = calculate_speed_and_steering(border)
+    #print("Speed: ", speed, " Steering: ", steering)
 
     # Draw the arrow representing speed and steering
     draw_arrow(img, speed, steering)
@@ -167,6 +222,3 @@ while True:
 
     # Only for testing
     #time.sleep_ms(100)
-
-    # Optional: Save the image with annotations (e.g., for debugging)
-    # img.save("output.jpg")
