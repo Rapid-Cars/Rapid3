@@ -163,7 +163,7 @@ def calculate_speed_and_steering(edges):
     print(steering_factors)
     print(sum(steering_factors) / len(steering_factors))
 
-    steering = sum(steering_factors) / len(steering_factors) #ToDo: Remove this
+    steering = sum(steering_factors) / len(steering_factors)
     steering = max(0, min(100, steering))  # Limit to 0-100
 
     return speed, steering
