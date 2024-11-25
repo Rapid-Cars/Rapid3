@@ -12,7 +12,8 @@ clock = time.clock()
 
 # Configuration
 CONSECUTIVE_PIXELS = 5  # Number of consecutive pixels below the threshold
-THRESHOLD = 70  # Brightness threshold to detect dark pixels (0-255)
+# For computer screen use 100, for real road use 70
+THRESHOLD = 80  # Brightness threshold to detect dark pixels (0-255)
 NO_LANE_THRESHOLD = 5  # Number of elements in the edges_array for it to count as a lane
 
 """
@@ -139,14 +140,30 @@ def calculate_speed_and_steering(edges):
 
     # ----- Steering Calculation ----
     steering_factors = []
-    steering_factors.append(center_deviation) # Add the deviation from the center to the steering factors
+    steering_factors.append(int(50 - center_deviation * 50)) # Add the deviation from the center to the steering factors
 
     left_averages = calculate_segment_averages(left_edges, 3, 1)
     right_averages = calculate_segment_averages(right_edges, 3, 2)
 
-    # ToDo: Use left_averages and right_averages to calculate the direction of the road to optimize the steering
+    # Check if road is straight
+    if len(left_averages) == 3:
+        dif = left_averages[1] - left_averages[2]
+        relative = left_averages[0] / (left_averages[1] + dif)
+        if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
+            steering_factors.append(relative * 50)
+            steering_factors.append(relative * 50)
 
-    steering = int(50 - center_deviation * 50) #ToDo: Remove this
+    if len(right_averages) == 3:
+        dif = right_averages[1] - right_averages[2]
+        relative = right_averages[0] / (right_averages[1] + dif)
+        if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
+            steering_factors.append(relative * 50)
+            steering_factors.append(relative * 50)
+
+    print(steering_factors)
+    print(sum(steering_factors) / len(steering_factors))
+
+    steering = sum(steering_factors) / len(steering_factors) #ToDo: Remove this
     steering = max(0, min(100, steering))  # Limit to 0-100
 
     return speed, steering
