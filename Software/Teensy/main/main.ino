@@ -31,14 +31,21 @@ void loop() {
   setSteeringAngle(10);
 }
 
-//Sets the speed of the motor
-//float speed = value between 0 and 100
-void setMotorSpeed(float speed) {
-  float writeSpeed = speed * escMaxSpeed * 1;//Change 1 to Umrechnungsfaktor
-  esc.write(writeSpeed);
+// Sets the speed of the esc
+// int speed = value between 0 and 100
+// The speed will get multiplied with the escMaxSpeed because the car won't need to go that fast.
+void setESCSpeed(int speed) {
+  speed = constrain(speed, 0, 100);
+  speed = speed * escMaxSpeed;
+  speed = map(speed, 0, 100, 0, 180); // Scales the speed to use it with the servo (value between 0 and 180)
+  esc.write(speed);
 }
 
+// int speed = value between 0 and 100
+// 0 = full left, 50 = straight, 100 = full right
 void setSteeringAngle(int angle) {
+  angle = constrain(angle, 0, 100);
+  angle = map(angle, 0, 100, 0, 180); // Scales the angle to use it with the servo (value between 0 and 180)
   steeringServo.write(angle);
 }
 
