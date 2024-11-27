@@ -25,10 +25,8 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  //Auf Befehl warten (zB Poti, oder Schalter)
-  setMotorSpeed(5);
-  setSteeringAngle(10);
+  testESC();
+  testSteering();
 }
 
 // Sets the speed of the esc
@@ -49,4 +47,55 @@ void setSteeringAngle(int angle) {
   steeringServo.write(angle);
 }
 
+// Tests the function of the motor
+void testESC() {
+  setESCSpeed(0);
+  setSteeringAngle(50);
+  delay(1000);
+  setESCSpeed(5);
+  delay(1000);
+  setESCSpeed(10);
+  delay(1000);
+  setESCSpeed(20);
+  delay(1000);
+  setESCSpeed(40);
+  delay(1000);
+  setESCSpeed(60);
+  delay(1000);
+  setESCSpeed(80);
+  delay(1000);
+  setESCSpeed(100);
+  delay(1000);
+  setESCSpeed(0);
+  delay(1000);
+}
+
+// Tests the function of the steering
+void testSteering() {
+  setESCSpeed(0);
+  setSteeringAngle(60);
+  delay(1000);
+  setSteeringAngle(70);
+  delay(1000);
+  setSteeringAngle(80);
+  delay(1000);
+  setSteeringAngle(90);
+  delay(1000);
+  setSteeringAngle(100);
+  delay(1000);
+  setSteeringAngle(40);
+  delay(1000);
+  setSteeringAngle(30);
+  delay(1000);
+  setSteeringAngle(20);
+  delay(1000);
+  setSteeringAngle(10);
+  delay(1000);
+  setSteeringAngle(0);
+  delay(1000);
+  setSteeringAngle(100);
+  delay(1000);
+  setSteeringAngle(50);
+  delay (9000);
+}
 
