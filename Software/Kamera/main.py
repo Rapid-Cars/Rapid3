@@ -1,5 +1,13 @@
 import sensor
 import time
+import machine
+
+# Initialize I2C
+# Pinout:
+# P4: SCL
+# P5: SDA
+i2c = machine.I2C(1, freq=100000)
+slave_address = 0x12  # Adress of Teensy
 
 # Camera initialization
 sensor.reset()
@@ -13,7 +21,7 @@ clock = time.clock()
 # Configuration
 CONSECUTIVE_PIXELS = 5  # Number of consecutive pixels below the threshold
 # For computer screen use 100, for real road use 70
-THRESHOLD = 80  # Brightness threshold to detect dark pixels (0-255)
+THRESHOLD = 100  # Brightness threshold to detect dark pixels (0-255)
 NO_LANE_THRESHOLD = 5  # Number of elements in the edges_array for it to count as a lane
 
 """
@@ -140,7 +148,7 @@ def calculate_speed_and_steering(edges):
 
     # ----- Steering Calculation ----
     steering_factors = []
-    steering_factors.append(int(50 - center_deviation * 50)) # Add the deviation from the center to the steering factors
+    steering_factors.append(int(50 - center_deviation * 80)) # Add the deviation from the center to the steering factors
 
     left_averages = calculate_segment_averages(left_edges, 3, 1)
     right_averages = calculate_segment_averages(right_edges, 3, 2)
@@ -153,12 +161,14 @@ def calculate_speed_and_steering(edges):
             steering_factors.append(relative * 50)
             steering_factors.append(relative * 50)
 
+
     if len(right_averages) == 3:
         dif = right_averages[1] - right_averages[2]
         relative = right_averages[0] / (right_averages[1] + dif)
         if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
             steering_factors.append(relative * 50)
             steering_factors.append(relative * 50)
+
 
     print(steering_factors)
     print(sum(steering_factors) / len(steering_factors))
@@ -232,6 +242,16 @@ while True:
 
     # Draw the arrow representing speed and steering
     draw_arrow(img, speed, steering)
+
+    try:
+        # Format Data as CSV
+        message = f"{speed},{steering}"
+        i2c.writeto(slave_address, message.encode('utf-8'))  # Send
+        print("Gesendet - Speed: ", speed, ", Steering: ", steering)
+    except OSError as e:
+        print("I2C Fehler:", e)
+
+    time.sleep_ms(100)
 
     # Output the results
     #print("Edges detected (y, left_edge, right_edge):", results)
