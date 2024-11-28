@@ -13,7 +13,7 @@ clock = time.clock()
 # Configuration
 CONSECUTIVE_PIXELS = 5  # Number of consecutive pixels below the threshold
 # For computer screen use 100, for real road use 70
-THRESHOLD = 80  # Brightness threshold to detect dark pixels (0-255)
+THRESHOLD = 70  # Brightness threshold to detect dark pixels (0-255)
 NO_LANE_THRESHOLD = 5  # Number of elements in the edges_array for it to count as a lane
 
 """
@@ -49,46 +49,6 @@ def calculate_segment_averages(arr, fraction, index):
         averages.append(avg)
 
     return averages
-
-"""
-Finds edges (dark regions) in a horizontal line.
-- img: The image being analyzed.
-- y: The y-coordinate of the line.
-- threshold: Brightness threshold to detect dark pixels (0-255).
-- consecutive_pixels: Number of pixels that must be below the threshold.
-"""
-def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXELS):
-    width = img.width()
-    mid_x = width // 2
-
-    # Search to the left (starting from the middle)
-    left_edge = None
-    consecutive_count = 0
-
-    for x in range(mid_x, 0, -1):
-        if img.get_pixel(x, y) < threshold:
-            consecutive_count += 1
-            if consecutive_count >= consecutive_pixels:
-                left_edge = x + (consecutive_pixels // 2)  # Center of the zone
-                break
-        else:
-            consecutive_count = 0
-
-    # Search to the right (starting from the middle)
-    right_edge = None
-    consecutive_count = 0
-
-    for x in range(mid_x, width):
-        if img.get_pixel(x, y) < threshold:
-            consecutive_count += 1
-            if consecutive_count >= consecutive_pixels:
-                right_edge = x - (consecutive_pixels // 2)  # Center of the zone
-                break
-        else:
-            consecutive_count = 0
-
-    return left_edge, right_edge
-
 
 """
 Calculates motor speed and steering value based on detected road edges.
@@ -136,7 +96,7 @@ def calculate_speed_and_steering(edges):
         speed = 30
     else:
         # Many lane markings -> Drive fast
-        speed = 100
+        speed = 50 # For now 50, this can be increased with a better algorithm
 
     # ----- Steering Calculation ----
     steering_factors = []
@@ -148,14 +108,20 @@ def calculate_speed_and_steering(edges):
     # Check if road is straight
     if len(left_averages) == 3:
         dif = left_averages[1] - left_averages[2]
-        relative = left_averages[0] / (left_averages[1] + dif)
+        if (left_averages[1] + dif) == 0:
+            relative = 1
+        else:
+            relative = left_averages[0] / (left_averages[1] + dif)
         if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
             steering_factors.append(relative * 50)
             steering_factors.append(relative * 50)
 
     if len(right_averages) == 3:
         dif = right_averages[1] - right_averages[2]
-        relative = right_averages[0] / (right_averages[1] + dif)
+        if (right_averages[1] + dif) == 0:
+            relative = 1
+        else:
+            relative = right_averages[0] / (right_averages[1] + dif)
         if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
             steering_factors.append(relative * 50)
             steering_factors.append(relative * 50)
@@ -194,13 +160,126 @@ def draw_arrow(img, speed, steering):
     tip_y = int(base_y - arrow_length)  # Vertical length
 
     # Draw the arrow on the image
-    img.draw_arrow(base_x, base_y, tip_x, tip_y, color=255, thickness=4)
+    img.draw_arrow(base_x, base_y, tip_x, tip_y, color=100, thickness=4)
+
+
+"""
+Finds the darkest pixel of the image.
+It only searches in the (horizontal) middle of the image.
+A few pixels (CONSECUTIVE_PIXELS) have to be below that value for it to be counted.
+"""
+def find_darkest_pixel(img):
+    darkest_pixel, temp = 255, 255
+    consecutive_count = 0
+    #x_pos, y_pos = 0, 0
+
+    for y in range(11, 13):
+        for x in range(20, (340 - 20)):
+            pixel = img.get_pixel(x, (y * 10))
+            if pixel < darkest_pixel:
+                consecutive_count += 1
+                if pixel < temp:
+                    temp = pixel
+                if consecutive_count >= CONSECUTIVE_PIXELS:
+                    darkest_pixel = temp
+                    temp = 255
+                    consecutive_count = 0
+                    #x_pos, y_pos = x, (y * 10)
+                    continue
+            else:
+                consecutive_count = 0
+                temp = 255
+
+    # Debug
+    #img.draw_circle(x_pos, y_pos, 10, color=255)
+    #print("Darkest Pixel:", darkest_pixel)
+
+    return darkest_pixel
+
+def find_border(left_border: bool):
+    border = []
+    if left_border:
+        min_x = 20
+        max_x = img.width() - 20
+        factor = 1
+    else:
+        max_x = 20
+        min_x = img.width() - 20
+        factor = -1
+
+    # Define the y-zones
+    zones = []
+    for y in range(22, 2, -1):  # The pixels/lines at the very top and bottom are ignored
+        zones.append(y * 10)
+
+    for y in zones:
+        consecutive_count = 0
+        found_border = False
+        for x in range(min_x, max_x, factor):
+            if img.get_pixel(x, y) < (THRESHOLD * 2):
+                consecutive_count += 1
+                if consecutive_count >= CONSECUTIVE_PIXELS and not found_border:
+                    border.append((x - factor * (CONSECUTIVE_PIXELS // 2), y))
+                    found_border = True
+                if consecutive_count >= CONSECUTIVE_PIXELS * 5:
+                    # Remove item if it is way bigger than a normal lane marking
+                    del border[-1]
+                    break
+            else:
+                consecutive_count = 0
+
+    for item in border:
+        if left_border:
+            img.draw_circle(item[0], item[1], 5, color=150)
+        else:
+            img.draw_circle(item[0], item[1], 5, color=255)
+
+
+
+"""
+Finds edges (dark regions) in a horizontal line.
+- img: The image being analyzed.
+- y: The y-coordinate of the line.
+- threshold: Brightness threshold to detect dark pixels (0-255).
+- consecutive_pixels: Number of pixels that must be below the threshold.
+"""
+def find_edges(img, y, consecutive_pixels=CONSECUTIVE_PIXELS):
+    width = img.width()
+    mid_x = width // 2
+
+    # Search to the left (starting from the middle)
+    left_edge = None
+    consecutive_count = 0
+
+    for x in range(mid_x, 0, -1):
+        if img.get_pixel(x, y) < (THRESHOLD + 10):
+            consecutive_count += 1
+            if consecutive_count >= consecutive_pixels:
+                left_edge = x + (consecutive_pixels // 2)  # Center of the zone
+                break
+        else:
+            consecutive_count = 0
+
+    # Search to the right (starting from the middle)
+    right_edge = None
+    consecutive_count = 0
+
+    for x in range(mid_x, width):
+        if img.get_pixel(x, y) < (THRESHOLD + 10):
+            consecutive_count += 1
+            if consecutive_count >= consecutive_pixels:
+                right_edge = x - (consecutive_pixels // 2)  # Center of the zone
+                break
+        else:
+            consecutive_count = 0
+
+    return left_edge, right_edge
 
 """
 Finds the borders of the road at specific y positions.
 Additionally draws circles at the found borders
 """
-def find_border(img):
+def old_find_border(img):
     # Define the y-zones
     zones = []
     for y in range(2, 22):  # The pixels/lines at the very top and bottom are ignored
@@ -214,7 +293,7 @@ def find_border(img):
 
         # Draw the results on the image
         if left:
-            img.draw_circle(left, y, 5, color=255)  # Mark left edge
+            img.draw_circle(left, y, 5, color=150)  # Mark left edge
         if right:
             img.draw_circle(right, y, 5, color=255)  # Mark right edge
     return edges
@@ -224,8 +303,11 @@ def find_border(img):
 while True:
     clock.tick()
     img = sensor.snapshot()  # Capture an image
+    #find_border(True)
+    #find_border(False)
 
-    border = find_border(img)
+    #THRESHOLD = find_darkest_pixel(img)
+    border = old_find_border(img)
 
     speed, steering = calculate_speed_and_steering(border)
     #print("Speed: ", speed, " Steering: ", steering)
@@ -238,4 +320,4 @@ while True:
     #print(clock.fps())
 
     # Only for testing
-    #time.sleep_ms(100)
+    #time.sleep_ms(100000)
