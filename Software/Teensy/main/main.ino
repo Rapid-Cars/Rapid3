@@ -6,7 +6,7 @@
 //Constants for this project
 //Motor / ESC
 int escPin; // The pin where the ESC is attached to the Teensy
-float escMaxSpeed; // Maximum speed of the motor (between 0 and 1)
+float escMaxSpeed; // Maximum speed of the motor (between 0.15 and 1)
 Servo esc;
 
 //Servo
@@ -25,12 +25,12 @@ int angles[5];
 
 void setup() {
   // Init esc
-  escPin = 1; //CHANGE BEFORE USE
+  escPin = 29; //CHANGE BEFORE USE
   escMaxSpeed = 0.2;
   esc.attach(escPin, 1000, 2000);
 
   // Init servo
-  servoPin = 1; //CHANGE BEFORE USE
+  servoPin = 28; //CHANGE BEFORE USE
   steeringServo.attach(servoPin);
 
   // Init I2C
@@ -42,6 +42,9 @@ void setup() {
   18: SDA
   */
   Serial.begin(115200);         // Debug-Output
+  Serial.println("Starting: \n");
+  setESCSpeed(0);
+  setSteeringAngle(50);
 }
 
 void loop() {
@@ -69,6 +72,8 @@ void processCameraData(int speed, int angle) {
       averageSpeed += speeds[i];
       averageAngle += angles[i];
     }
+    averageSpeed = averageSpeed / 5;
+    averageAngle = averageAngle / 5;
     setESCSpeed(averageSpeed);
     setSteeringAngle(averageAngle);
   }
@@ -79,15 +84,21 @@ void processCameraData(int speed, int angle) {
 // The speed will get multiplied with the escMaxSpeed because the car won't need to go that fast.
 void setESCSpeed(int speed) {
   speed = constrain(speed, 0, 100);
-  speed = speed * escMaxSpeed;
-  speed = map(speed, 0, 100, 0, 180); // Scales the speed to use it with the servo (value between 0 and 180)
+
+  if (speed == 0) {
+    esc.write(0);
+    return;
+  }
+  speed = map(speed, 0, 100, 27, (180 * escMaxSpeed)); // Scales the speed to use it with the servo (value between 0 and 180)
+  speed = constrain(speed, 0, 180 * escMaxSpeed);
   esc.write(speed);
 }
 
 // int speed = value between 0 and 100
-// 0 = full left, 50 = straight, 100 = full right
+// 100 = full left, 50 = straight, 0 = full right
 void setSteeringAngle(int angle) {
   angle = constrain(angle, 0, 100);
+  angle = map(angle, 0, 100, 50, 86); // Before full right was 50 and full left was 86
   angle = map(angle, 0, 100, 0, 180); // Scales the angle to use it with the servo (value between 0 and 180)
   steeringServo.write(angle);
 }
@@ -111,30 +122,27 @@ void receiveEvent(int numBytes) {
 
 // Tests the function of the motor
 void testESC() {
+  Serial.print("Testing ESC");
   setESCSpeed(0);
-  setSteeringAngle(50);
-  delay(1000);
-  setESCSpeed(5);
-  delay(1000);
-  setESCSpeed(10);
-  delay(1000);
+  //setSteeringAngle(50);
   setESCSpeed(20);
-  delay(1000);
+  delay(3000);
   setESCSpeed(40);
-  delay(1000);
+  delay(3000);
   setESCSpeed(60);
-  delay(1000);
+  delay(3000);
   setESCSpeed(80);
-  delay(1000);
+  delay(3000);
   setESCSpeed(100);
-  delay(1000);
+  delay(3000);
   setESCSpeed(0);
-  delay(1000);
+  delay(10000);
 }
 
 // Tests the function of the steering
 void testSteering() {
-  setESCSpeed(0);
+  Serial.print("Testing steering");
+  //setESCSpeed(0);
   setSteeringAngle(60);
   delay(1000);
   setSteeringAngle(70);
