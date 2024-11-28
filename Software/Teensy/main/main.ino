@@ -26,7 +26,7 @@ int angles[5];
 void setup() {
   // Init esc
   escPin = 29; //CHANGE BEFORE USE
-  escMaxSpeed = 0.2;
+  escMaxSpeed = 0.15;
   esc.attach(escPin, 1000, 2000);
 
   // Init servo
@@ -49,12 +49,24 @@ void setup() {
 
 void loop() {
   // Process data from the camera
-  //processCameraData(speed, angle);
-  //delay(15);
+  processCameraData(speed, angle);
+  delay(15);
 
   // For testing
-  testESC();
-  testSteering();
+  //setESCSpeed(1);
+  //delay(2000);
+  
+  //testESC();
+  setSteeringAngle(0);
+  setESCSpeed(10);
+  delay(5000);
+  esc.write(0);
+  delay(5000);
+  
+
+  //driveTestCircle();
+  //testESC();
+  //testSteering();
 }
 
 // Processes the motor speed and steering angle.
@@ -118,6 +130,21 @@ void receiveEvent(int numBytes) {
   Serial.print(speed);
   Serial.print(", Steering angle: ");
   Serial.println(angle);
+}
+
+void driveTestCircle() {
+  esc.write(0);
+  setSteeringAngle(50);
+  delay(5000);
+  setESCSpeed(10);
+  for (int i = 50; i<=100; i++) {
+    setSteeringAngle(i);
+    delay(20);
+  }
+  for (int i = 100; i>=50; i--) {
+    setSteeringAngle(i);
+    delay(20);
+  }
 }
 
 // Tests the function of the motor
