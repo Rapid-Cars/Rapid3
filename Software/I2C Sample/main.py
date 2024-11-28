@@ -10,15 +10,16 @@ i2c = machine.I2C(1, freq=100000)
 slave_address = 0x12  # Adress of Teensy
 
 # Sample values for speed and steering
-speed = 100
-steering = 45
+speed = 0
+steering = 50
 
 while True:
+    #img = sensor.snapshot()
     # Change values (dummy code)
     speed += 1
     steering += 2
-    if speed > 200: speed = 100
-    if steering > 90: steering = -90
+    if speed > 100: speed = 0
+    if steering > 100: steering = 0
 
     try:
         # Format Data as CSV
@@ -28,4 +29,4 @@ while True:
     except OSError as e:
         print("I2C Fehler:", e)
 
-    time.sleep_ms(1)  # Interval between cycles
+    time.sleep_ms(100)  # Interval between cycles
