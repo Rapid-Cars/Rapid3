@@ -25,12 +25,12 @@ int angles[5];
 
 void setup() {
   // Init esc
-  escPin = 29; //CHANGE BEFORE USE
+  escPin = 28; //CHANGE BEFORE USE
   escMaxSpeed = 0.15;
   esc.attach(escPin, 1000, 2000);
 
   // Init servo
-  servoPin = 28; //CHANGE BEFORE USE
+  servoPin = 24; //CHANGE BEFORE USE
   steeringServo.attach(servoPin);
 
   // Init I2C
@@ -53,20 +53,13 @@ void loop() {
   delay(15);
 
   // For testing
-  //setESCSpeed(1);
+  //setESCSpeed(100);
   //delay(2000);
   
-  //testESC();
-  setSteeringAngle(0);
-  setESCSpeed(10);
-  delay(5000);
-  esc.write(0);
-  delay(5000);
-  
-
   //driveTestCircle();
   //testESC();
   //testSteering();
+  //exit(0);
 }
 
 // Processes the motor speed and steering angle.
