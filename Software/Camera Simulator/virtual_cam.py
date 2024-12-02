@@ -60,6 +60,110 @@ def calculate_segment_averages(arr, fraction, index):
     return averages
 
 
+def calculate_movement_params(img, canvas):
+    """
+    Calculates movement parameters for an image-based navigation system. The function
+    analyzes the given image to determine the necessary speed and steering adjustments
+    required to align with detected edges or boundaries within the image. When no edges
+    are detected, default movement parameters are returned. It visually annotates the image
+    canvas with debug information indicating detected edges, the calculated deviation, and the
+    image center.
+
+    Parameters:
+        img: ndarray
+            The input image in which movement parameters are to be calculated.
+        canvas: Any
+            The canvas or surface where debug visuals will be drawn.
+
+    Returns:
+        tuple: A tuple containing:
+            - calculated_speed (int): The speed required for movement based on the
+              calculated deviation from the center.
+            - calculated_steering (int): The steering adjustment necessary based on the
+              position of detected edges within the image.
+    """
+    height, width = img.shape[:2]
+    center_y = height // 2
+    calculated_speed = 0
+    calculated_steering = 50
+
+    left_border, right_border = find_edges(img, center_y)
+    if not left_border and not right_border:
+        return calculated_speed, calculated_steering
+
+    if not left_border:
+        left_border = -100
+    if not right_border:
+        right_border = width + 100
+
+    center_deviation = calculate_deviation(width, left_border, right_border)
+    calculated_steering = int(50 - center_deviation * 50)
+
+    draw_debug_visuals(canvas, center_y, width, left_border, right_border, center_deviation)
+
+    calculated_speed = int((1 - abs(center_deviation)) * 100)
+    return calculated_speed, calculated_steering
+
+
+def calculate_deviation(width, left_border, right_border):
+    """
+    Calculate the deviation from the center position within a specified width.
+
+    This function computes how far a point, defined by its left and right borders,
+    is deviated from the central position within the given width. It is helpful in
+    determining how centered a position is relative to its boundaries. The deviation
+    is calculated as a proportion of the width.
+
+    Parameters:
+    width: int
+        The total width within which the deviation is calculated. The width should
+        be a positive integer.
+    left_border: int
+        The coordinate of the left border of the position. It should be a non-negative
+        integer that does not exceed width.
+    right_border: int
+        The coordinate of the right border of the position. It should be a non-negative
+        integer that does not exceed width and should be greater than or equal to
+        the left border.
+
+    Returns:
+    float
+        The deviation from the center as a value between -1 and 1. A negative value
+        indicates left deviation, zero indicates center alignment, and a positive
+        value indicates right deviation.
+    """
+    return ((width // 2) - ((left_border + right_border) / 2)) / (width // 2)
+
+
+def draw_debug_visuals(canvas, center_y, width, left_border, right_border, center_deviation):
+    """
+    Draws visual debug elements on the provided canvas, including left and right border indicators,
+    a center line, and a deviation line based on the provided center deviation from the width's
+    center. This is useful in visualizing the alignment and deviation in graphical applications.
+
+    Parameters:
+    canvas : Any
+        The drawing surface to render the debug visuals on. It should support drawing operations
+        such as lines and circles.
+    center_y : int
+        The vertical position on the canvas where the horizontal lines and circles are centered.
+    width : int
+        The total width of the canvas, used to calculate the mid-point and the deviation line.
+    left_border : Any
+        The coordinate or reference for the left border, used to draw an indicator circle.
+    right_border : Any
+        The coordinate or reference for the right border, used to draw an indicator circle.
+    center_deviation : float
+        A factor representing how far the deviation line should be from the center line. It is
+        a multiplier of the half-width.
+    """
+    draw_circle(canvas, left_border, center_y) # Left border
+    draw_circle(canvas, right_border, center_y) # Right border
+    cv2.line(canvas, (width // 2, center_y + 10), (width // 2, center_y - 10), (0, 0, 255), 2) # Center line
+    deviation_line_x = int(width // 2 - center_deviation * (width // 2))
+    cv2.line(canvas, (deviation_line_x, center_y + 10), (deviation_line_x, center_y - 10), (0, 0, 255), 2) # Deviation line
+
+# Deprecated
 def find_border(img):
     """
     Find the borders in an image by detecting edges at specific intervals.
@@ -137,7 +241,7 @@ def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXEL
 
     return left_edge, right_edge
 
-
+# Deprecated
 def calculate_speed_and_steering(edges):
     """
     Calculate the speed and steering based on the detected road edges. This function processes the input list of edges,
@@ -311,7 +415,7 @@ def set_input_and_output(selected_video):
 
     return input, output
 
-input_vid, output = set_input_and_output(8)
+input_vid, output = set_input_and_output(7)
 
 cap = cv2.VideoCapture(input_vid)
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -325,18 +429,19 @@ while cap.isOpened():
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Process video
-    border = find_border(gray)
-    speed, steering = calculate_speed_and_steering(border)
+    speed, steering = calculate_movement_params(gray, frame)
+    #border = find_border(gray)
+    #speed, steering = calculate_speed_and_steering(border)
 
     # Draws the border, speed and the steering angle on the frame
-    for element in border:
+    """for element in border:
         y = element[0]
         left = element[1]
         right = element[2]
         if left:
             draw_circle(frame, left, y)
         if right:
-            draw_circle(frame, right, y)
+            draw_circle(frame, right, y)"""
     draw_speed(frame, speed)
     draw_steering(frame, steering)
     out.write(frame)
