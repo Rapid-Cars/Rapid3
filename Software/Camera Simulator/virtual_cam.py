@@ -5,107 +5,157 @@ import numpy as np
 # Shared with /Software/Kamera/main.py
 
 # Constants
-CONSECUTIVE_PIXELS = 5
-THRESHOLD = 70
-NO_LANE_THRESHOLD = 5  # Number of elements in the edges_array for it to count as a lane
+CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
+MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
+THRESHOLD = 70 # Darkness Threshold, can be a constant but can also change dynamically
+HEIGHT = 240
+WIDTH = 320
 
-def calculate_segment_averages(arr, fraction, index):
+# Border recognition
+# ///////////////////////////////////////////////////////////////////
+
+def set_threshold():
+    """Sets the threshold dynamically based on the image. Dummy function."""
+    return
+
+
+def get_border_element(img, x, y, from_left = 1):
     """
-    Calculate the average of specified segments of an array. The function
-    divides the input array into a given number of segments as specified
-    by the 'fraction' parameter. It calculates averages for each segment
-    based on the specified index of elements within the array.
+    Finds the border element in a given row of an image by scanning horizontally
+    from a given starting point. It detects the border by counting consecutive
+    pixels below a predefined intensity threshold. If a sufficient number of
+    consecutive low-intensity pixels are found, it identifies this as a border
+    element and computes its middle point. If there are to many consecutive
+    intensity pixels, it returns None.
 
     Parameters:
-    arr: list
-        A list of elements where each element is expected to have
-        accessible elements by indexing.
-    fraction: int
-        A positive integer indicating the number of segments to divide
-        the array into.
-    index: int
-        The index position to access elements within each element of
-        the array for average calculation.
+        img: int[][] - A 2D array representing the grayscale image.
+        x: int - The initial horizontal position to start scanning.
+        y: int - The vertical row to be scanned for the border element.
+        from_left: int - The direction to scan; 1 for left to right, -1 for right to left.
 
     Returns:
-    list
-        A list of averages for each calculated segment. Returns an empty
-        list if the input array is empty.
-
-    Raises:
-    ValueError
-        If the fraction is not a positive integer.
+        tuple[int, int] | None: The (y, x) coordinates of the border element's
+        middle point if found, otherwise None.
     """
-    if not arr:  # Handle empty array
-        return []
+    element = None
+    consecutive_count = 0
+    first_x = None
+    x_min = max(x - MAX_CONSECUTIVE_PIXELS - 10, 0)
+    x_max = min(x + MAX_CONSECUTIVE_PIXELS + 10, WIDTH - 1)
+    if from_left == 1:
+        rng = range(x_min, x_max, 1)
+    else:
+        rng = range(x_max, x_min, -1)
+    for x in rng:
+        if img[y, x] < THRESHOLD:
+            consecutive_count += 1
+            if consecutive_count >= CONSECUTIVE_PIXELS:
+                if not first_x:
+                    first_x = x
+        else:
+            consecutive_count = 0
 
-    if fraction <= 0 or not isinstance(fraction, int):
-        raise ValueError("Fraction must be a positive integer.")
-
-    length = len(arr)
-    segment_size = length // fraction  # Calculate size of each segment
-
-    indexElements = []
-    for element in arr:
-        indexElements.append(element[index])
-
-    averages = []
-    for i in range(fraction):
-        start = i * segment_size
-        end = start + segment_size if i < fraction - 1 else length
-        segment = indexElements[start:end]
-        avg = sum(segment) / len(segment) if segment else 0
-        averages.append(avg)
-
-    return averages
+    if consecutive_count < MAX_CONSECUTIVE_PIXELS and first_x is not None:
+        # Calculate the middle point of the element
+        element =(y, (2 * first_x + consecutive_count) // 2)
+    return element
 
 
-def calculate_movement_params(img, canvas):
+def get_lane_start(img):
     """
-    Calculates movement parameters for an image-based navigation system. The function
-    analyzes the given image to determine the necessary speed and steering adjustments
-    required to align with detected edges or boundaries within the image. When no edges
-    are detected, default movement parameters are returned. It visually annotates the image
-    canvas with debug information indicating detected edges, the calculated deviation, and the
-    image center.
+    Determine the start positions of left and right lanes in the given image.
+    The function searches for the starting points of the left and right lanes
+    by scanning the image within defined regions and directions. It returns the
+    first detected lane start positions for both left and right lanes.
 
     Parameters:
-        img: ndarray
-            The input image in which movement parameters are to be calculated.
-        canvas: Any
-            The canvas or surface where debug visuals will be drawn.
+        img: A 2D or 3D array representing the image data in which the lanes
+             are to be detected.
 
     Returns:
-        tuple: A tuple containing:
-            - calculated_speed (int): The speed required for movement based on the
-              calculated deviation from the center.
-            - calculated_steering (int): The steering adjustment necessary based on the
-              position of detected edges within the image.
+        A tuple (left_lane_start, right_lane_start), where both elements
+        represent the starting points of the left and right lanes respectively.
+        These positions are derived from scanning the image according to
+        specified parameters for x and y coordinates.
     """
-    height, width = img.shape[:2]
-    center_y = height // 2
-    calculated_speed = 0
-    calculated_steering = 50
+    # Find left lane
+    # Search params:
+    # x: 10 to (width // 2) - 10
+    # y: Start at height - 10 then move to height // 2
+    left_lane_start = None
+    for y in range(HEIGHT - 10, HEIGHT // 2, -10):
+        x = 20
+        while x < ((WIDTH // 2) - (2 * MAX_CONSECUTIVE_PIXELS - 10)):
+            x += MAX_CONSECUTIVE_PIXELS
+            element = get_border_element(img, x, y, -1)
+            if element:
+                left_lane_start = element
+                break
+        if left_lane_start: break
 
-    left_border, right_border = find_edges(img, center_y)
-    if not left_border and not right_border:
-        return calculated_speed, calculated_steering
+    # Search params:
+    # x: (width // 2) + 10 to width - 10
+    # y: Start at height - 10 then move to height // 2
+    right_lane_start = None
+    for y in range(HEIGHT - 10, HEIGHT // 2, -10):
+        x = WIDTH - 20
+        while x > ((WIDTH // 2) + (2 * MAX_CONSECUTIVE_PIXELS - 10)):
+            x -= MAX_CONSECUTIVE_PIXELS
+            element = get_border_element(img, x, y, 1)  # Change scan direction
+            if element:
+                right_lane_start = element
+                break
+        if right_lane_start: break
 
-    if not left_border:
-        left_border = -100
-    if not right_border:
-        right_border = width + 100
-
-    center_deviation = calculate_deviation(width, left_border, right_border)
-    calculated_steering = int(50 - center_deviation * 50)
-
-    draw_debug_visuals(canvas, center_y, width, left_border, right_border, center_deviation)
-
-    calculated_speed = int((1 - abs(center_deviation)) * 100)
-    return calculated_speed, calculated_steering
+    return left_lane_start, right_lane_start
 
 
-def calculate_deviation(width, left_border, right_border):
+def get_borders(img):
+    """
+    Extracts the borders of lanes from an image by finding sequential elements
+    in each lane starting from the initial positions returned by get_lane_start.
+    Traverses in an upward direction along the image, alternating between
+    adding elements to the left and right border lists.
+
+    Parameters:
+        img: The image data from which lane borders are to be determined.
+
+    Returns:
+        A tuple containing two lists. The first list is the left border,
+        and the second list is the right border. Each list contains tuples
+        of coordinates (y, x) representing the borders of the lanes.
+    """
+    left_border = []
+    right_border = []
+
+    left_start, right_start = get_lane_start(img)
+
+    if left_start is not None:
+        x = left_start[1]
+        for y in range(left_start[0], 20, -10):
+            element = get_border_element(img, x, y, -1)
+            if not element:
+                break
+            x = element[1]
+            left_border.append((y, x))
+
+    if right_start is not None:
+        x = right_start[1]
+        for y in range(right_start[0], 20, -10):
+            element = get_border_element(img, x, y, 1)
+            if not element:
+                break
+            x = element[1]
+            right_border.append((y, x))
+
+    return left_border, right_border
+
+
+# Calculation of speed and steering
+# ///////////////////////////////////////////////////////////////////
+
+def calculate_deviation(left_border, right_border):
     """
     Calculate the deviation from the center position within a specified width.
 
@@ -132,214 +182,98 @@ def calculate_deviation(width, left_border, right_border):
         indicates left deviation, zero indicates center alignment, and a positive
         value indicates right deviation.
     """
-    return ((width // 2) - ((left_border + right_border) / 2)) / (width // 2)
+    return ((WIDTH // 2) - ((left_border + right_border) / 2)) / (WIDTH // 2)
 
 
-def draw_debug_visuals(canvas, center_y, width, left_border, right_border, center_deviation):
+def calculate_center_deviations(left_lane, right_lane):
+    deviations = []
+
+    left_index, right_index = 0, 0
+    left_border_len = len(left_lane)
+    right_border_len = len(right_lane)
+
+    while left_index < left_border_len and right_index < right_border_len:
+        left_y, left_x = left_lane[left_index]
+        right_y, right_x = right_lane[right_index]
+
+        if left_y > right_y:
+            # Different action when left y > right y
+            # Implement your specific action here
+            deviations.append((left_y, calculate_deviation(left_x, WIDTH)))
+            left_index += 1
+        elif right_y > left_y:
+            # Different action when right y > left y
+            # Implement your specific action here
+            deviations.append((left_y, calculate_deviation( 0, right_x)))
+            right_index += 1
+        else:
+            # Compare the x values when y is identical
+            deviations.append((left_y, calculate_deviation(left_x, right_x)))
+            left_index += 1
+            right_index += 1
+
+    # Handle any remaining left y values with no matching right y.
+    while left_index < left_border_len:
+        left_y, left_x = left_lane[left_index]
+        deviations.append((left_y, calculate_deviation(left_x, WIDTH + 100)))
+        left_index += 1
+
+    # Handle any remaining right y values with no matching left y.
+    while right_index < right_border_len:
+        right_y, right_x = right_lane[right_index]
+        deviations.append((right_y, calculate_deviation(-100, right_x)))
+        right_index += 1
+
+    return deviations
+
+
+def calculate_movement_params(img):
     """
-    Draws visual debug elements on the provided canvas, including left and right border indicators,
-    a center line, and a deviation line based on the provided center deviation from the width's
-    center. This is useful in visualizing the alignment and deviation in graphical applications.
+    Calculates movement parameters for an image-based navigation system. The function
+    analyzes the given image to determine the necessary speed and steering adjustments
+    required to align with detected edges or boundaries within the image. When no edges
+    are detected, default movement parameters are returned. It visually annotates the image
+    canvas with debug information indicating detected edges, the calculated deviation, and the
+    image center.
 
     Parameters:
-    canvas : Any
-        The drawing surface to render the debug visuals on. It should support drawing operations
-        such as lines and circles.
-    center_y : int
-        The vertical position on the canvas where the horizontal lines and circles are centered.
-    width : int
-        The total width of the canvas, used to calculate the mid-point and the deviation line.
-    left_border : Any
-        The coordinate or reference for the left border, used to draw an indicator circle.
-    right_border : Any
-        The coordinate or reference for the right border, used to draw an indicator circle.
-    center_deviation : float
-        A factor representing how far the deviation line should be from the center line. It is
-        a multiplier of the half-width.
-    """
-    draw_circle(canvas, left_border, center_y) # Left border
-    draw_circle(canvas, right_border, center_y) # Right border
-    cv2.line(canvas, (width // 2, center_y + 10), (width // 2, center_y - 10), (0, 0, 255), 2) # Center line
-    deviation_line_x = int(width // 2 - center_deviation * (width // 2))
-    cv2.line(canvas, (deviation_line_x, center_y + 10), (deviation_line_x, center_y - 10), (0, 0, 255), 2) # Deviation line
-
-# Deprecated
-def find_border(img):
-    """
-    Find the borders in an image by detecting edges at specific intervals.
-
-    This function processes the provided image by iterating over a range of
-    vertical lines, spaced 10 pixels apart, starting from pixel 20 and ending
-    20 pixels before the bottom of the image. For each line, it determines its
-    left and right edges and stores the coordinates.
-
-    Parameters
-    ----------
-    img : numpy.ndarray
-        The input image in which edges are to be detected. Assumes a 2D array
-        where img.shape[0] refers to the height of the image.
-
-    Returns
-    -------
-    list of tuple
-        A list of tuples, each containing a vertical position `y` and the
-        corresponding left and right edge positions on that line (y, left, right).
-    """
-    edges = []
-    for y in range(20, img.shape[0] - 20, 10):
-        left, right = find_edges(img, y)
-        edges.append((y, left, right))
-    return edges
-
-
-def find_edges(img, y, threshold=THRESHOLD, consecutive_pixels=CONSECUTIVE_PIXELS):
-    """
-    Finds the left and right edges on a given row of an image based on pixel intensity
-    and a specified threshold.
-
-    The function analyzes a specific row, defined by 'y', of the image and looks for the
-    first and last series of consecutive pixels that have intensity values below the
-    specified threshold. The search begins from the center of the row moving towards
-    both ends. It identifies the left and right edges where a series of consecutive
-    pixels, indicating the potential edge, is found.
-
-    Parameters:
-        img (array-like): A 2D array representing the image where the edges need to be found.
-        y (int): The row index in the image where the edge detection is performed.
-        threshold: int = THRESHOLD: The intensity threshold below which pixels are considered part of an edge.
-        consecutive_pixels: int = CONSECUTIVE_PIXELS: The number of consecutive pixels below the
-            threshold needed to determine an edge.
+        img: ndarray
+            The input image in which movement parameters are to be calculated.
 
     Returns:
-        tuple: A tuple containing the left and right edge positions on the specified row. The
-        left edge is returned first, followed by the right edge.
+        tuple: A tuple containing:
+            - calculated_speed (int): The speed required for movement based on the
+              calculated deviation from the center.
+            - calculated_steering (int): The steering adjustment necessary based on the
+              position of detected edges within the image.
     """
-    height, width = img.shape
-    mid_x = width // 2
+    calculated_speed = 5
+    calculated_steering = 50
 
-    left_edge = 0
-    consecutive_count = 0
-    for x in range(mid_x, 0, -1):
-        if img[y, x] < threshold:
-            consecutive_count += 1
-            if consecutive_count >= consecutive_pixels:
-                left_edge = x + (consecutive_pixels // 2)
-                break
-        else:
-            consecutive_count = 0
+    left_border, right_border = get_borders(img)
+    if not left_border and not right_border:
+        return calculated_speed, calculated_steering
 
-    right_edge = None
-    consecutive_count = 0
-    for x in range(mid_x, width):
-        if img[y, x] < threshold:
-            consecutive_count += 1
-            if consecutive_count >= consecutive_pixels:
-                right_edge = x - (consecutive_pixels // 2)
-                break
-        else:
-            consecutive_count = 0
+    center_deviations = calculate_center_deviations(left_border, right_border)
+    average_deviation = 0
+    for deviation in center_deviations:
+        average_deviation += deviation[1]
+    average_deviation = average_deviation / len(center_deviations)
 
-    return left_edge, right_edge
+    calculated_steering = int(50 - average_deviation * 50)
 
-# Deprecated
-def calculate_speed_and_steering(edges):
-    """
-    Calculate the speed and steering based on the detected road edges. This function processes the input list of edges,
-    determines their validity, and calculates appropriate speed and steering values to navigate based on the road conditions.
-
-    Parameters:
-    edges : list
-        A list of tuples, where each tuple represents an edge detected on the road. Each tuple contains information about
-        the edge and its corresponding left and right positions.
-
-    Returns:
-    tuple
-        A tuple containing the calculated speed and steering values. Speed indicates how fast the vehicle should move,
-        while steering represents the desired steering angle from 0 to 100.
-    """
-    both_edges = [edge for edge in edges if edge[1] is not None and edge[2] is not None]
-    left_edges = [edge for edge in edges if edge[1] is not None]
-    right_edges = [edge for edge in edges if edge[2] is not None]
-
-    # print("left: ", len(left_edges), ", right: ", len(right_edges), "; valid: ", len(both_edges))
-
-    # Initialize speed and steering
-    speed = 0
-    steering = 50  # Neutral steering value
-
-    if len(left_edges) == 0 and len(right_edges) == 0:
-        # No valid edges detected -> Stop
-        return 0, 50  # No road edges: speed = 0, straight steering
-
-    # Calculate the averages of left and right edges
-    if len(left_edges) == 0 or len(right_edges) == 0:
-        mid_point = -1
-    else:
-        avg_left = sum(edge[1] for edge in left_edges) / len(left_edges)
-        avg_right = sum(edge[2] for edge in right_edges) / len(right_edges)
-        # Calculate the midpoint
-        mid_point = (avg_left + avg_right) / 2
-
-    # Analyze the current road
-    center_deviation = (mid_point - (320 // 2)) / (320 // 2)  # Normalized deviation from the image center
-
-    # ----- Speed Calculation -----
-    if len(both_edges) < NO_LANE_THRESHOLD:
-        # Very little lane markings on both sides -> Slow down
-        speed = 20
-    elif len(left_edges) < NO_LANE_THRESHOLD or len(right_edges) < NO_LANE_THRESHOLD:
-        # One edge is missing -> Drive cautiously
-        speed = 30
-    else:
-        # Many lane markings -> Drive fast
-        speed = 50 # For now 50, this can be increased with a better algorithm
-
-    # ----- Steering Calculation ----
-    steering_factors = []
-    steering_factors.append(int(50 - center_deviation * 50)) # Add the deviation from the center to the steering factors
-
-    left_averages = calculate_segment_averages(left_edges, 3, 1)
-    right_averages = calculate_segment_averages(right_edges, 3, 2)
-
-    # Check if road is straight
-    if len(left_averages) == 3:
-        dif = left_averages[1] - left_averages[2]
-        if (left_averages[1] + dif) == 0:
-            relative = 1
-        else:
-            relative = left_averages[0] / (left_averages[1] + dif)
-        if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
-            steering_factors.append(relative * 50)
-            steering_factors.append(relative * 50)
-
-    if len(right_averages) == 3:
-        dif = right_averages[1] - right_averages[2]
-        if (right_averages[1] + dif) == 0:
-            relative = 1
-        else:
-            relative = right_averages[0] / (right_averages[1] + dif)
-        if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
-            steering_factors.append(relative * 50)
-            steering_factors.append(relative * 50)
-
-    #print(steering_factors)
-    #print(sum(steering_factors) / len(steering_factors))
-
-    steering = sum(steering_factors) / len(steering_factors)
-    steering = max(0, min(100, steering))  # Limit to 0-100
-
-    return speed, steering
+    calculated_speed = int((1 - abs(average_deviation)) * 100)
+    return calculated_speed, calculated_steering
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Specific to virtual_cam
+# Debug visualisations
 
 # Constants for colors and drawing
 RED_COLOR = (0, 0, 255)
 GREEN_COLOR = (0, 255, 0)
 LINE_THICKNESS = 2
 CIRCLE_RADIUS = 5
-
 
 def draw_speed(img, vehicle_speed):
     """
@@ -377,17 +311,8 @@ def draw_steering(img, steering_angle):
     cv2.arrowedLine(img, (arrow_start_x, arrow_base_y), (arrow_tip_x, arrow_tip_y), RED_COLOR, LINE_THICKNESS)
 
 
-def draw_circle(img, center_x, center_y):
-    """
-    Draws a small green circle on the image at the specified coordinates.
-
-    Parameters:
-    - img: ndarray
-    - center_x: int
-    - center_y: int
-    """
-    cv2.circle(img, (center_x, center_y), CIRCLE_RADIUS, GREEN_COLOR, LINE_THICKNESS)
-
+# ----------------------------------------------------------------------------------------------------------------------
+# Specific to virtual_cam.py
 
 def set_input_and_output(selected_video):
     """
@@ -407,49 +332,87 @@ def set_input_and_output(selected_video):
     input_path = "/home/robin/NextUP/NXP/Videos/" # Path to video file
     input_videos = ["Schikane mitlaeufig", "Schikane gegenlaeufig", "Schikane gerade", "Video 2", "Video 1 45 links",
                     "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", "Test - Oval - Rechtsrum"]
-    input = input_path + input_videos[selected_video] + ".mp4"  # Path to video + video name
-    print("Processing: ", input)
+    input_video = input_path + input_videos[selected_video] + ".mp4"  # Path to video + video name
+    print("Processing: ", input_video)
 
     output_path = "/home/robin/NextUP/NXP/Videos/Output/" # Path to output
     output = output_path + input_videos[selected_video] + " - processed.avi"
 
-    return input, output
+    return input_video, output
 
-input_vid, output = set_input_and_output(7)
+def load_video():
+    """
+    Load and process a video using OpenCV.
 
-cap = cv2.VideoCapture(input_vid)
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter(output, fourcc, 30.0, (320, 240))
+    This function initializes the video capture and writer objects, reads
+    frames from an input video, processes each frame, and writes the
+    processed frames to an output video file. It also displays each frame
+    in a window until the video ends or the user closes the window.
+    """
+    input_vid, output = set_input_and_output(6)
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+    cap = cv2.VideoCapture(input_vid)
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(output, fourcc, 30.0, (320, 240))
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        process_video(frame)
+        out.write(frame)
+
+        cv2.imshow('Frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+
+def process_video(img):
+    """
+    Processes a video frame by updating global dimensions, converting it to grayscale, calculating movement
+    parameters, and optionally drawing visual aids such as borders, deviations, speed, and steering on the frame.
+
+    Parameters:
+        img: numpy.ndarray
+            An image array representing the video frame to be processed.
+
+    Returns:
+        None
+    """
+    global HEIGHT, WIDTH
+    HEIGHT, WIDTH = img.shape[:2]
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Process video
-    speed, steering = calculate_movement_params(gray, frame)
-    #border = find_border(gray)
-    #speed, steering = calculate_speed_and_steering(border)
+    speed, steering = calculate_movement_params(gray)
 
-    # Draws the border, speed and the steering angle on the frame
-    """for element in border:
-        y = element[0]
-        left = element[1]
-        right = element[2]
-        if left:
-            draw_circle(frame, left, y)
-        if right:
-            draw_circle(frame, right, y)"""
-    draw_speed(frame, speed)
-    draw_steering(frame, steering)
-    out.write(frame)
+    visuals = True # True to draw visuals on the screen, false if no visuals are needed
+    if visuals:
+        # Draw left border
+        left_border, right_border = get_borders(gray)
+        if left_border:
+            for element in left_border:
+                cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
+        if right_border:
+            for element in right_border:
+                cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
 
-    cv2.imshow('Frame', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        # Draw deviations
+        center_deviations = calculate_center_deviations(left_border, right_border)
+        cv2.line(img, (WIDTH // 2, 10), (WIDTH // 2, HEIGHT - 10), RED_COLOR, LINE_THICKNESS)  # Center line
+        for deviation in center_deviations:
+            deviation_line_x = int(WIDTH // 2 - deviation[1] * (WIDTH // 2))
+            cv2.line(img, (deviation_line_x, deviation[0] + 10), (deviation_line_x, deviation[0] - 10),
+                     GREEN_COLOR, LINE_THICKNESS)
 
-cap.release()
-out.release()
-cv2.destroyAllWindows()
+        # Draw speed and steering
+        # Draws the border, speed and the steering angle on the frame
+        draw_speed(img, speed)
+        draw_steering(img, steering)
+
+load_video()
