@@ -60,6 +60,7 @@ def find_border(img):
         steering_factors.append(coefficient * 50)
         steering = sum(steering_factors) / len(steering_factors)
         steering = max(0, min(100, steering))
+        speed = 100
     else:
         speed = 0
         steering = 50
