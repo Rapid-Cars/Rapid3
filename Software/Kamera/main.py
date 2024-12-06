@@ -320,7 +320,7 @@ while True:
     #print("Speed: ", speed, " Steering: ", steering)
 
     # Draw the arrow representing speed and steering
-    #draw_arrow(img, speed, steering)
+    draw_arrow(img, speed, steering)
 
     try:
         # Format Data as CSV
