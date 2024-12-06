@@ -15,46 +15,47 @@ clock = time.clock()
 THRESHOLD = 40  # Brightness threshold to detect dark pixels (0-255)
 """
 The following program uses the idea of drawing "longitudes" through the image and calculate the
-speed and steering through two given x and y coordinates
+speed and steering through two given x and y coordinates EDGES1 SHOULD BE DESIGNED TO BREAK AFTER EVERY X
 """
 
 def find_border(img):
-    x_edges = []
+    edges1 = []
+    edges2 = []
+    writing_to_x_edges2 = False  # Flag to track which array to write to
 
-    for x in range (10, 310, 10):            #crossing of longitude
-        for y in range (10, 230):
-            if img.get_pixel(x, y) == 255:  #white cause inversion
-                #print("There is something at ", x, y) #helps debugging
-                x_edges.append((x, y))
+    for x in range(10, 320, 10):  # crossing of longitude
+        #img.draw_line(x, 0, x, 240, 5, color=255)
+        for y in range(10, 230):  # set 10 higher, because vision worsens in the distance
+            if img.get_pixel(x, y) == 255:  # white because inversion
+                if not writing_to_x_edges2:
+                    edges1.append((x, y))
+                    break
+                else:
+                    edges2.append((x,y))
+            else:
+                if writing_to_x_edges2 == False and len(edges1) > 0:
+                    writing_to_x_edges2 = True
 
-    value_count = {}
+    #print("edges1: ", edges1)
+    #print("\n")
+    #print("edges2: ", edges2)
 
-    for row in x_edges:
-        # Only consider the first entry of each row
-        value = row[0]  # First value of each row
-        if value in value_count:
-            value_count[value] += 1
-        else:
-            value_count[value] = 1
-
-    # Step 2: Classify values into lane1 and lane2 based on their occurrences
-    lane_above = []  # For values that appear exactly once
-    #lane_below = []  # For values that appear exactly twice
-
-    seen = set()  # To track the first occurrence of the first value
-    lane_above = []   # To store the tuples with first-time first values
-
-    for row in x_edges:
-        first_value = row[0]
-        if first_value not in seen:  # If the first value is seen for the first time
-            lane_above.append(row)  # Add the tuple to the result
-            seen.add(first_value)  # Mark this first value as seen
+    if len(edges2) > len(edges1):
+        edges1, edges2 = edges2, edges1
 
     angle = 0
     speed = 0
 
-    if len(lane_above) >= 2 and lane_above[-1][1]-lane_above[0][1] != 0:     #calulate the steering with the arctan [x][y]
-        angle = math.atan(lane_above[-1][0]-lane_above[0][0] / lane_above[-1][1]-lane_above[0][1])
+    #print("edges1: ", edges1)
+    #print("\n")
+    #print("edges2: ", edges2)
+    #print("\n")
+
+    img.draw_circle(edges1[-1][1], edges1[-1][0], 15, color=255)
+    img.draw_circle(edges1[0][1], edges1[0][0], 15, color=255)
+
+    if len(edges1) >= 2 and edges1[-1][1]-edges1[0][1] != 0:     #calulate the steering with the arctan [x][y]
+        angle = math.atan((edges1[-1][0]-edges1[0][0]) / (edges1[-1][1]-edges1[0][1]))
         coefficient = angle * 2 / 3.1459
 
         steering =  50 * (1 + coefficient)
@@ -64,7 +65,8 @@ def find_border(img):
         speed = 0
         #speed = 100
         steering = 50
-    print("steering: ", steering, "speed: ", speed, "angle: ", angle*180/3.1459, "°")
+    print("steering:", steering, " speed:", speed, " angle:", angle*180/3.1459, "°")
+    #print(angle)
     return speed, steering, angle
 
 def draw_arrow(img, speed, steering, angle):
@@ -78,7 +80,7 @@ def draw_arrow(img, speed, steering, angle):
 
     # Calculate arrow tip coordinates
     tip_x = int(base_x + arrow_length * math.sin(angle))  # Horizontal deviation
-    tip_y = int(base_y + arrow_length * math.cos(angle))  # Vertical length
+    tip_y = int(base_y - arrow_length * math.cos(angle))  # Vertical length
 
     # Draw the arrow on the image
     img.draw_arrow(base_x, base_y, tip_x, tip_y, color=255, thickness=4)
