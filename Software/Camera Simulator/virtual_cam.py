@@ -165,9 +165,6 @@ def calculate_deviation(left_border, right_border):
     is calculated as a proportion of the width.
 
     Parameters:
-    width: int
-        The total width within which the deviation is calculated. The width should
-        be a positive integer.
     left_border: int
         The coordinate of the left border of the position. It should be a non-negative
         integer that does not exceed width.
@@ -331,7 +328,7 @@ def set_input_and_output(selected_video):
     """
     input_path = "/home/robin/NextUP/NXP/Videos/" # Path to video file
     input_videos = ["Schikane mitlaeufig", "Schikane gegenlaeufig", "Schikane gerade", "Video 2", "Video 1 45 links",
-                    "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", "Test - Oval - Rechtsrum"]
+                    "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", "Test - Oval - Rechtsrum", "Oval im Raum", "Wasserzeichen"] # 0 - 11
     input_video = input_path + input_videos[selected_video] + ".mp4"  # Path to video + video name
     print("Processing: ", input_video)
 
@@ -349,7 +346,7 @@ def load_video():
     processed frames to an output video file. It also displays each frame
     in a window until the video ends or the user closes the window.
     """
-    input_vid, output = set_input_and_output(6)
+    input_vid, output = set_input_and_output(11)
 
     cap = cv2.VideoCapture(input_vid)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')

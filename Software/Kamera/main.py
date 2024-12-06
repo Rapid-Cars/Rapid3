@@ -10,131 +10,6 @@ sensor.set_auto_gain(False)  # Disable automatic exposure
 sensor.set_auto_whitebal(False)  # Disable automatic white balance
 clock = time.clock()
 
-# Configuration
-CONSECUTIVE_PIXELS = 5  # Number of consecutive pixels below the threshold
-# For computer screen use 100, for real road use 70
-THRESHOLD = 70  # Brightness threshold to detect dark pixels (0-255)
-NO_LANE_THRESHOLD = 5  # Number of elements in the edges_array for it to count as a lane
-
-"""
-    Calculates the average of the array divided into `fraction` parts.
-
-    Parameters:
-    - arr: The array to process (can be empty).
-    - fraction: The denominator specifying the number of parts (e.g., 2, 3, 4).
-
-    Returns:
-    - A list of averages for each segment, or an empty list if the array is empty.
-    """
-def calculate_segment_averages(arr, fraction, index):
-    if not arr:  # Handle empty array
-        return []
-
-    if fraction <= 0 or not isinstance(fraction, int):
-        raise ValueError("Fraction must be a positive integer.")
-
-    length = len(arr)
-    segment_size = length // fraction  # Calculate size of each segment
-
-    indexElements = []
-    for element in arr:
-        indexElements.append(element[index])
-
-    averages = []
-    for i in range(fraction):
-        start = i * segment_size
-        end = start + segment_size if i < fraction - 1 else length
-        segment = indexElements[start:end]
-        avg = sum(segment) / len(segment) if segment else 0
-        averages.append(avg)
-
-    return averages
-
-"""
-Calculates motor speed and steering value based on detected road edges.
-
-Parameters:
-- edges: List of tuples [(y, left_edge, right_edge), ...] containing edges in different zones.
-
-Returns:
-- speed: Motor speed (0 to 100).
-- steering: Steering (0 to 100, where 0 is fully left and 100 is fully right).
-"""
-def calculate_speed_and_steering(edges):
-    both_edges = [edge for edge in edges if edge[1] is not None and edge[2] is not None]
-    left_edges = [edge for edge in edges if edge[1] is not None]
-    right_edges = [edge for edge in edges if edge[2] is not None]
-
-    # print("left: ", len(left_edges), ", right: ", len(right_edges), "; valid: ", len(both_edges))
-
-    # Initialize speed and steering
-    speed = 0
-    steering = 50  # Neutral steering value
-
-    if len(left_edges) == 0 and len(right_edges) == 0:
-        # No valid edges detected -> Stop
-        return 0, 50  # No road edges: speed = 0, straight steering
-
-    # Calculate the averages of left and right edges
-    if len(left_edges) == 0 or len(right_edges) == 0:
-        mid_point = -1
-    else:
-        avg_left = sum(edge[1] for edge in left_edges) / len(left_edges)
-        avg_right = sum(edge[2] for edge in right_edges) / len(right_edges)
-        # Calculate the midpoint
-        mid_point = (avg_left + avg_right) / 2
-
-    # Analyze the current road
-    center_deviation = (mid_point - (320 // 2)) / (320 // 2)  # Normalized deviation from the image center
-
-    # ----- Speed Calculation -----
-    if len(both_edges) < NO_LANE_THRESHOLD:
-        # Very little lane markings on both sides -> Slow down
-        speed = 20
-    elif len(left_edges) < NO_LANE_THRESHOLD or len(right_edges) < NO_LANE_THRESHOLD:
-        # One edge is missing -> Drive cautiously
-        speed = 30
-    else:
-        # Many lane markings -> Drive fast
-        speed = 50 # For now 50, this can be increased with a better algorithm
-
-    # ----- Steering Calculation ----
-    steering_factors = []
-    steering_factors.append(int(50 - center_deviation * 50)) # Add the deviation from the center to the steering factors
-
-    left_averages = calculate_segment_averages(left_edges, 3, 1)
-    right_averages = calculate_segment_averages(right_edges, 3, 2)
-
-    # Check if road is straight
-    if len(left_averages) == 3:
-        dif = left_averages[1] - left_averages[2]
-        if (left_averages[1] + dif) == 0:
-            relative = 1
-        else:
-            relative = left_averages[0] / (left_averages[1] + dif)
-        if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
-            steering_factors.append(relative * 50)
-            steering_factors.append(relative * 50)
-
-    if len(right_averages) == 3:
-        dif = right_averages[1] - right_averages[2]
-        if (right_averages[1] + dif) == 0:
-            relative = 1
-        else:
-            relative = right_averages[0] / (right_averages[1] + dif)
-        if relative < 0.95 or relative > 1.05: # If relative is in this range, the curvature of the road is minimal
-            steering_factors.append(relative * 50)
-            steering_factors.append(relative * 50)
-
-    print(steering_factors)
-    print(sum(steering_factors) / len(steering_factors))
-
-    steering = sum(steering_factors) / len(steering_factors)
-    steering = max(0, min(100, steering))  # Limit to 0-100
-
-    return speed, steering
-
-
 """
 Draws an arrow on the image to visualize speed and steering.
 - Speed determines the length of the arrow.
@@ -162,161 +37,280 @@ def draw_arrow(img, speed, steering):
     # Draw the arrow on the image
     img.draw_arrow(base_x, base_y, tip_x, tip_y, color=100, thickness=4)
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Shared with /Software/Camera Simulator/virtual_cam.py
 
-"""
-Finds the darkest pixel of the image.
-It only searches in the (horizontal) middle of the image.
-A few pixels (CONSECUTIVE_PIXELS) have to be below that value for it to be counted.
-"""
-def find_darkest_pixel(img):
-    darkest_pixel, temp = 255, 255
+# Constants
+CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
+MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
+THRESHOLD = 70 # Darkness Threshold, can be a constant but can also change dynamically
+HEIGHT = 240
+WIDTH = 320
+
+# Border recognition
+# ///////////////////////////////////////////////////////////////////
+
+def set_threshold():
+    """Sets the threshold dynamically based on the image. Dummy function."""
+    return
+
+
+def get_border_element(img, x, y, from_left = 1):
+    """
+    Finds the border element in a given row of an image by scanning horizontally
+    from a given starting point. It detects the border by counting consecutive
+    pixels below a predefined intensity threshold. If a sufficient number of
+    consecutive low-intensity pixels are found, it identifies this as a border
+    element and computes its middle point. If there are to many consecutive
+    intensity pixels, it returns None.
+
+    Parameters:
+        img: int[][] - A 2D array representing the grayscale image.
+        x: int - The initial horizontal position to start scanning.
+        y: int - The vertical row to be scanned for the border element.
+        from_left: int - The direction to scan; 1 for left to right, -1 for right to left.
+
+    Returns:
+        tuple[int, int] | None: The (y, x) coordinates of the border element's
+        middle point if found, otherwise None.
+    """
+    element = None
     consecutive_count = 0
-    #x_pos, y_pos = 0, 0
-
-    for y in range(11, 13):
-        for x in range(20, (340 - 20)):
-            pixel = img.get_pixel(x, (y * 10))
-            if pixel < darkest_pixel:
-                consecutive_count += 1
-                if pixel < temp:
-                    temp = pixel
-                if consecutive_count >= CONSECUTIVE_PIXELS:
-                    darkest_pixel = temp
-                    temp = 255
-                    consecutive_count = 0
-                    #x_pos, y_pos = x, (y * 10)
-                    continue
-            else:
-                consecutive_count = 0
-                temp = 255
-
-    # Debug
-    #img.draw_circle(x_pos, y_pos, 10, color=255)
-    #print("Darkest Pixel:", darkest_pixel)
-
-    return darkest_pixel
-
-def find_border(left_border: bool):
-    border = []
-    if left_border:
-        min_x = 20
-        max_x = img.width() - 20
-        factor = 1
+    first_x = None
+    x_min = max(x - MAX_CONSECUTIVE_PIXELS - 10, 0)
+    x_max = min(x + MAX_CONSECUTIVE_PIXELS + 10, WIDTH - 1)
+    if from_left == 1:
+        rng = range(x_min, x_max, 1)
     else:
-        max_x = 20
-        min_x = img.width() - 20
-        factor = -1
-
-    # Define the y-zones
-    zones = []
-    for y in range(22, 2, -1):  # The pixels/lines at the very top and bottom are ignored
-        zones.append(y * 10)
-
-    for y in zones:
-        consecutive_count = 0
-        found_border = False
-        for x in range(min_x, max_x, factor):
-            if img.get_pixel(x, y) < (THRESHOLD * 2):
-                consecutive_count += 1
-                if consecutive_count >= CONSECUTIVE_PIXELS and not found_border:
-                    border.append((x - factor * (CONSECUTIVE_PIXELS // 2), y))
-                    found_border = True
-                if consecutive_count >= CONSECUTIVE_PIXELS * 5:
-                    # Remove item if it is way bigger than a normal lane marking
-                    del border[-1]
-                    break
-            else:
-                consecutive_count = 0
-
-    for item in border:
-        if left_border:
-            img.draw_circle(item[0], item[1], 5, color=150)
-        else:
-            img.draw_circle(item[0], item[1], 5, color=255)
-
-
-
-"""
-Finds edges (dark regions) in a horizontal line.
-- img: The image being analyzed.
-- y: The y-coordinate of the line.
-- threshold: Brightness threshold to detect dark pixels (0-255).
-- consecutive_pixels: Number of pixels that must be below the threshold.
-"""
-def find_edges(img, y, consecutive_pixels=CONSECUTIVE_PIXELS):
-    width = img.width()
-    mid_x = width // 2
-
-    # Search to the left (starting from the middle)
-    left_edge = None
-    consecutive_count = 0
-
-    for x in range(mid_x, 0, -1):
-        if img.get_pixel(x, y) < (THRESHOLD + 10):
+        rng = range(x_max, x_min, -1)
+    for x in rng:
+        if img.get_pixel(x, y) < THRESHOLD:
             consecutive_count += 1
-            if consecutive_count >= consecutive_pixels:
-                left_edge = x + (consecutive_pixels // 2)  # Center of the zone
-                break
+            if consecutive_count >= CONSECUTIVE_PIXELS:
+                if not first_x:
+                    first_x = x
         else:
             consecutive_count = 0
 
-    # Search to the right (starting from the middle)
-    right_edge = None
-    consecutive_count = 0
+    if consecutive_count < MAX_CONSECUTIVE_PIXELS and first_x is not None:
+        # Calculate the middle point of the element
+        element =(y, (2 * first_x + consecutive_count) // 2)
+    return element
 
-    for x in range(mid_x, width):
-        if img.get_pixel(x, y) < (THRESHOLD + 10):
-            consecutive_count += 1
-            if consecutive_count >= consecutive_pixels:
-                right_edge = x - (consecutive_pixels // 2)  # Center of the zone
+
+def get_lane_start(img):
+    """
+    Determine the start positions of left and right lanes in the given image.
+    The function searches for the starting points of the left and right lanes
+    by scanning the image within defined regions and directions. It returns the
+    first detected lane start positions for both left and right lanes.
+
+    Parameters:
+        img: A 2D or 3D array representing the image data in which the lanes
+             are to be detected.
+
+    Returns:
+        A tuple (left_lane_start, right_lane_start), where both elements
+        represent the starting points of the left and right lanes respectively.
+        These positions are derived from scanning the image according to
+        specified parameters for x and y coordinates.
+    """
+    # Find left lane
+    # Search params:
+    # x: 10 to (width // 2) - 10
+    # y: Start at height - 10 then move to height // 2
+    left_lane_start = None
+    for y in range(HEIGHT - 10, HEIGHT // 2, -10):
+        x = 20
+        while x < ((WIDTH // 2) - (2 * MAX_CONSECUTIVE_PIXELS - 10)):
+            x += MAX_CONSECUTIVE_PIXELS
+            element = get_border_element(img, x, y, -1)
+            if element:
+                left_lane_start = element
                 break
+        if left_lane_start: break
+
+    # Search params:
+    # x: (width // 2) + 10 to width - 10
+    # y: Start at height - 10 then move to height // 2
+    right_lane_start = None
+    for y in range(HEIGHT - 10, HEIGHT // 2, -10):
+        x = WIDTH - 20
+        while x > ((WIDTH // 2) + (2 * MAX_CONSECUTIVE_PIXELS - 10)):
+            x -= MAX_CONSECUTIVE_PIXELS
+            element = get_border_element(img, x, y, 1)  # Change scan direction
+            if element:
+                right_lane_start = element
+                break
+        if right_lane_start: break
+
+    return left_lane_start, right_lane_start
+
+
+def get_borders(img):
+    """
+    Extracts the borders of lanes from an image by finding sequential elements
+    in each lane starting from the initial positions returned by get_lane_start.
+    Traverses in an upward direction along the image, alternating between
+    adding elements to the left and right border lists.
+
+    Parameters:
+        img: The image data from which lane borders are to be determined.
+
+    Returns:
+        A tuple containing two lists. The first list is the left border,
+        and the second list is the right border. Each list contains tuples
+        of coordinates (y, x) representing the borders of the lanes.
+    """
+    left_border = []
+    right_border = []
+
+    left_start, right_start = get_lane_start(img)
+
+    if left_start is not None:
+        x = left_start[1]
+        for y in range(left_start[0], 20, -10):
+            element = get_border_element(img, x, y, -1)
+            if not element:
+                break
+            x = element[1]
+            left_border.append((y, x))
+
+    if right_start is not None:
+        x = right_start[1]
+        for y in range(right_start[0], 20, -10):
+            element = get_border_element(img, x, y, 1)
+            if not element:
+                break
+            x = element[1]
+            right_border.append((y, x))
+
+    return left_border, right_border
+
+
+# Calculation of speed and steering
+# ///////////////////////////////////////////////////////////////////
+
+def calculate_deviation(left_border, right_border):
+    """
+    Calculate the deviation from the center position within a specified width.
+
+    This function computes how far a point, defined by its left and right borders,
+    is deviated from the central position within the given width. It is helpful in
+    determining how centered a position is relative to its boundaries. The deviation
+    is calculated as a proportion of the width.
+
+    Parameters:
+    left_border: int
+        The coordinate of the left border of the position. It should be a non-negative
+        integer that does not exceed width.
+    right_border: int
+        The coordinate of the right border of the position. It should be a non-negative
+        integer that does not exceed width and should be greater than or equal to
+        the left border.
+
+    Returns:
+    float
+        The deviation from the center as a value between -1 and 1. A negative value
+        indicates left deviation, zero indicates center alignment, and a positive
+        value indicates right deviation.
+    """
+    return ((WIDTH // 2) - ((left_border + right_border) / 2)) / (WIDTH // 2)
+
+
+def calculate_center_deviations(left_lane, right_lane):
+    deviations = []
+
+    left_index, right_index = 0, 0
+    left_border_len = len(left_lane)
+    right_border_len = len(right_lane)
+
+    while left_index < left_border_len and right_index < right_border_len:
+        left_y, left_x = left_lane[left_index]
+        right_y, right_x = right_lane[right_index]
+
+        if left_y > right_y:
+            # Different action when left y > right y
+            # Implement your specific action here
+            deviations.append((left_y, calculate_deviation(left_x, WIDTH)))
+            left_index += 1
+        elif right_y > left_y:
+            # Different action when right y > left y
+            # Implement your specific action here
+            deviations.append((left_y, calculate_deviation( 0, right_x)))
+            right_index += 1
         else:
-            consecutive_count = 0
+            # Compare the x values when y is identical
+            deviations.append((left_y, calculate_deviation(left_x, right_x)))
+            left_index += 1
+            right_index += 1
 
-    return left_edge, right_edge
+    # Handle any remaining left y values with no matching right y.
+    while left_index < left_border_len:
+        left_y, left_x = left_lane[left_index]
+        deviations.append((left_y, calculate_deviation(left_x, WIDTH + 100)))
+        left_index += 1
 
-"""
-Finds the borders of the road at specific y positions.
-Additionally draws circles at the found borders
-"""
-def old_find_border(img):
-    # Define the y-zones
-    zones = []
-    for y in range(2, 22):  # The pixels/lines at the very top and bottom are ignored
-        zones.append(y * 10)
+    # Handle any remaining right y values with no matching left y.
+    while right_index < right_border_len:
+        right_y, right_x = right_lane[right_index]
+        deviations.append((right_y, calculate_deviation(-100, right_x)))
+        right_index += 1
 
-    edges = []
+    return deviations
 
-    for y in zones:
-        left, right = find_edges(img, y)
-        edges.append((y, left, right))
 
-        # Draw the results on the image
-        if left:
-            img.draw_circle(left, y, 5, color=150)  # Mark left edge
-        if right:
-            img.draw_circle(right, y, 5, color=255)  # Mark right edge
-    return edges
+def calculate_movement_params(img):
+    """
+    Calculates movement parameters for an image-based navigation system. The function
+    analyzes the given image to determine the necessary speed and steering adjustments
+    required to align with detected edges or boundaries within the image. When no edges
+    are detected, default movement parameters are returned. It visually annotates the image
+    canvas with debug information indicating detected edges, the calculated deviation, and the
+    image center.
+
+    Parameters:
+        img: ndarray
+            The input image in which movement parameters are to be calculated.
+
+    Returns:
+        tuple: A tuple containing:
+            - calculated_speed (int): The speed required for movement based on the
+              calculated deviation from the center.
+            - calculated_steering (int): The steering adjustment necessary based on the
+              position of detected edges within the image.
+    """
+    calculated_speed = 5
+    calculated_steering = 50
+
+    left_border, right_border = get_borders(img)
+    if not left_border and not right_border:
+        return calculated_speed, calculated_steering
+
+    center_deviations = calculate_center_deviations(left_border, right_border)
+    average_deviation = 0
+    for deviation in center_deviations:
+        average_deviation += deviation[1]
+    average_deviation = average_deviation / len(center_deviations)
+    average_deviation = - average_deviation
+
+    calculated_steering = int(50 - average_deviation * 50)
+
+    calculated_speed = int((1 - abs(average_deviation)) * 100)
+    return calculated_speed, calculated_steering
 
 
 # main loop
 while True:
     clock.tick()
     img = sensor.snapshot()  # Capture an image
-    #find_border(True)
-    #find_border(False)
 
-    #THRESHOLD = find_darkest_pixel(img)
-    border = old_find_border(img)
-
-    speed, steering = calculate_speed_and_steering(border)
+    speed, steering = calculate_movement_params(img)
     #print("Speed: ", speed, " Steering: ", steering)
 
     # Draw the arrow representing speed and steering
-    draw_arrow(img, speed, steering)
+    #draw_arrow(img, speed, steering)
 
-    # Output the results
-    #print("Edges detected (y, left_edge, right_edge):", results)
     #print(clock.fps())
 
     # Only for testing
