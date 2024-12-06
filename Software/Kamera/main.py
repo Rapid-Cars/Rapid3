@@ -1,5 +1,14 @@
+# noinspection PyUnresolvedReferences
 import sensor
 import time
+import machine
+
+# Initialize I2C
+# Pinout:
+# P4: SCL
+# P5: SDA
+i2c = machine.I2C(1, freq=100000)
+slave_address = 0x12  # Adress of Teensy
 
 # Camera initialization
 sensor.reset()
@@ -49,6 +58,8 @@ WIDTH = 320
 
 # Border recognition
 # ///////////////////////////////////////////////////////////////////
+
+
 
 def set_threshold():
     """Sets the threshold dynamically based on the image. Dummy function."""
@@ -311,7 +322,19 @@ while True:
     # Draw the arrow representing speed and steering
     #draw_arrow(img, speed, steering)
 
+    try:
+        # Format Data as CSV
+        message = f"{speed},{steering}"
+        i2c.writeto(slave_address, message.encode('utf-8'))  # Send
+        print("Gesendet - Speed: ", speed, ", Steering: ", steering)
+    except OSError as e:
+        print("I2C Fehler:", e)
+
+    time.sleep_ms(100)
+
+    # Output the results
+    #print("Edges detected (y, left_edge, right_edge):", results)
     #print(clock.fps())
 
     # Only for testing
-    #time.sleep_ms(100000)
+    #time.sleep_ms(100)
