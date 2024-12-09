@@ -5,7 +5,34 @@ THRESHOLD = 70 # Darkness Threshold, can be a constant but can also change dynam
 HEIGHT = 240
 WIDTH = 320
 
-class LaneRecognitionOne:
+class BaseInitiatedLaneFinder:
+    """
+        A lane detection algorithm that analyzes grayscale images
+        using pixel intensity values to identify lane lines.
+
+        1. Initialization:
+           - Instantiates a pixel getter object responsible for retrieving
+             pixel intensity values from the image.
+
+        2. Thresholding:
+           - Establishes a dynamic threshold for pixel intensity to differentiate
+             lane regions based on brightness, though currently implemented as a
+             placeholder function in this code.
+
+        3. Lane Detection:
+           - Identifies starting positions for left and right lanes by scanning
+             designated regions, detecting consecutive low-intensity pixels
+             indicative of potential lane markers.
+           - Maintains a limit on detected consecutive pixels to filter out noise.
+
+        4. Lane Tracking:
+            - Once initial lane starting points are found, the algorithm tracks the
+              lanes by moving upwards (reducing the y-coordinate) through the image
+              from these starting points.
+            - It continuously verifies the lane by attempting to add new lane
+              elements (middle points of valid lane sections) found in the upwards
+              scan direction, for both left and right lanes.
+        """
     def __init__(self):
         self.pixel_getter = None
 
