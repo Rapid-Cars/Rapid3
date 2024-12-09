@@ -53,8 +53,17 @@ def calculate_center_deviations(left_lane, right_lane):
     right_border_len = len(right_lane)
 
     while left_index < left_border_len and right_index < right_border_len:
-        left_y, left_x = left_lane[left_index]
-        right_y, right_x = right_lane[right_index]
+        if left_lane[left_index] is not None:
+            left_y, left_x = left_lane[left_index]
+        else:
+            left_index += 1
+            break
+
+        if right_lane[right_index] is not None:
+            right_y, right_x = right_lane[right_index]
+        else:
+            right_index += 1
+            break
 
         if left_y > right_y:
             # Different action when left y > right y
@@ -74,14 +83,16 @@ def calculate_center_deviations(left_lane, right_lane):
 
     # Handle any remaining left y values with no matching right y.
     while left_index < left_border_len:
-        left_y, left_x = left_lane[left_index]
-        deviations.append((left_y, calculate_deviation(left_x, WIDTH + 100)))
+        if left_lane[left_index] is not None:
+            left_y, left_x = left_lane[left_index]
+            deviations.append((left_y, calculate_deviation(left_x, WIDTH + 100)))
         left_index += 1
 
     # Handle any remaining right y values with no matching left y.
     while right_index < right_border_len:
-        right_y, right_x = right_lane[right_index]
-        deviations.append((right_y, calculate_deviation(-100, right_x)))
+        if right_lane[right_index] is not None:
+            right_y, right_x = right_lane[right_index]
+            deviations.append((right_y, calculate_deviation(-100, right_x)))
         right_index += 1
 
     return deviations
@@ -114,6 +125,8 @@ def calculate_movement_params(left_lane, right_lane):
         return calculated_speed, calculated_steering
 
     center_deviations = calculate_center_deviations(left_lane, right_lane)
+    if not center_deviations:
+        return calculated_speed, calculated_steering
     average_deviation = 0
     for deviation in center_deviations:
         average_deviation += deviation[1]

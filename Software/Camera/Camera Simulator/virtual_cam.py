@@ -145,22 +145,17 @@ def process_frame(img, lane_recognizer, movement_params):
     speed, steering = movement_params.get_movement_params(left_lane, right_lane)
 
     visuals = True # True to draw visuals on the screen, false if no visuals are needed
+
     if visuals:
         # Draw left border
         if left_lane:
             for element in left_lane:
-                cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
+                if element is not None:
+                    cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
         if right_lane:
             for element in right_lane:
-                cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
-
-        # Draw deviations
-        center_deviations = movement_params.calculate_center_deviations(left_lane, right_lane)
-        cv2.line(img, (WIDTH // 2, 10), (WIDTH // 2, HEIGHT - 10), RED_COLOR, LINE_THICKNESS)  # Center line
-        for deviation in center_deviations:
-            deviation_line_x = int(WIDTH // 2 - deviation[1] * (WIDTH // 2))
-            cv2.line(img, (deviation_line_x, deviation[0] + 10), (deviation_line_x, deviation[0] - 10),
-                     GREEN_COLOR, LINE_THICKNESS)
+                if element is not None:
+                    cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
 
         # Draw speed and steering
         # Draws the border, speed and the steering angle on the frame
@@ -170,7 +165,7 @@ def process_frame(img, lane_recognizer, movement_params):
 
 def start():
     pixel_getter = get_pixel_getter('virtual_cam')
-    lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
+    lane_recognition = get_lane_recognition_instance('CenterLineFinder')
     lane_recognition.setup(pixel_getter)
     movement_params = get_movement_params_instance('MovementParamsOne')
     load_video(lane_recognition, movement_params, 0)
