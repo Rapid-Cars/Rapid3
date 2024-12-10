@@ -12,12 +12,6 @@ sensor.skip_frames(time=2000)  # Time to stabilize the camera
 sensor.set_auto_gain(False)  # Disable automatic exposure
 sensor.set_auto_whitebal(False)  # Disable automatic white balance
 clock = time.clock()
-<<<<<<< Updated upstream
-THRESHOLD = 40  # Brightness threshold to detect dark pixels (0-255)
-"""
-The following program uses the idea of drawing "longitudes" through the image and calculate the
-speed and steering through two given x and y coordinates EDGES1 SHOULD BE DESIGNED TO BREAK AFTER EVERY X
-=======
 THRESHOLD = 60  # Brightness threshold to detect dark pixels (0-255)
 DEPTH = 40      #How close to the top border should be evaluated?
 
@@ -30,33 +24,14 @@ it is the other lane. Then this should be written in a second array. We compare 
 more intersections with the longitude (Which lane is less perpendicular in the image?) We take the
 one with more intersections, calculate speed and steering with the arctan, draw an arrow and pass
 everything to the microcontroller.
->>>>>>> Stashed changes
 """
 
 def find_border(img):
     edges1 = []
     edges2 = []
-<<<<<<< Updated upstream
-    writing_to_x_edges2 = False  # Flag to track which array to write to
-
-    for x in range(10, 320, 10):  # crossing of longitude
-        #img.draw_line(x, 0, x, 240, 5, color=255)
-        for y in range(10, 230):  # set 10 higher, because vision worsens in the distance
-            if img.get_pixel(x, y) == 255:  # white because inversion
-                if not writing_to_x_edges2:
-                    edges1.append((x, y))
-                    break
-                else:
-                    edges2.append((x,y))
-            else:
-                if writing_to_x_edges2 == False and len(edges1) > 0:
-                    writing_to_x_edges2 = True
-
-    #print("edges1: ", edges1)
-    #print("\n")
-    #print("edges2: ", edges2)
-=======
+    edges3 = []
     writing_to_edges2 = False  # Flag to track which array to write to
+    writing_to_edges3 = False  # Flag to track which array to write to
 
     for x in range(10, 320, 10):  # crossing of longitude
         #img.draw_line(x, DEPTH, x, 240, color=255)
@@ -64,44 +39,33 @@ def find_border(img):
         for y in range(DEPTH, 240):  # Higher start due to worse vision in the distance
             if img.get_pixel(x, y) == 255:  # White pixel due to inversion
                 found_white = True
-                if not writing_to_edges2:
+                if not writing_to_edges2 and not writing_to_edges3:
                     edges1.append((x, y))
-                else:
+                elif not writing_to_edges3:
                     edges2.append((x, y))
+                else:
+                    edges3.append((x, y))
                 break
         if not found_white and not writing_to_edges2 and len(edges1) > 0:
             writing_to_edges2 = True
+        if not found_white and not writing_to_edges3 and len(edges2) > 0:
+            writing_to_edges3 = True
 
 
-    print("\nedges1: ", edges1)
-    print("edges2: ", edges2)
->>>>>>> Stashed changes
+    #print("\nedges1: ", edges1)
+    #print("edges2: ", edges2)
 
-    if len(edges2) > len(edges1):
-        edges1, edges2 = edges2, edges1
+    longest_array = max([edges1, edges2, edges3], key=len)
 
     angle = 0
     speed = 0
 
-<<<<<<< Updated upstream
-    #print("edges1: ", edges1)
-    #print("\n")
-    #print("edges2: ", edges2)
-    #print("\n")
+    #print("longest_array: ", longest_array)
 
-    img.draw_circle(edges1[-1][1], edges1[-1][0], 15, color=255)
-    img.draw_circle(edges1[0][1], edges1[0][0], 15, color=255)
-
-    if len(edges1) >= 2 and edges1[-1][1]-edges1[0][1] != 0:     #calulate the steering with the arctan [x][y]
-=======
-    print("edges1_after_swap: ", edges1)
-    print("edges2_after_swap: ", edges2)
-
-    if len(edges1) >= 2 and edges1[-1][1]-edges1[0][1] != 0:     #calulate the steering with the arctan [x][y]
-        img.draw_circle(edges1[-1][0], edges1[-1][1], 15, color=255)
-        img.draw_circle(edges1[0][0], edges1[0][1], 15, color=255)
->>>>>>> Stashed changes
-        angle = math.atan((edges1[-1][0]-edges1[0][0]) / (edges1[-1][1]-edges1[0][1]))
+    if len(edges1) >= 2 and longest_array[-1][1]-longest_array[0][1] != 0:     #calulate the steering with the arctan [x][y]
+        img.draw_circle(longest_array[-1][0], longest_array[-1][1], 15, color=255)
+        img.draw_circle(longest_array[0][0], longest_array[0][1], 15, color=255)
+        angle = math.atan((longest_array[-1][0]-longest_array[0][0]) / (longest_array[-1][1]-longest_array[0][1]))
         coefficient = angle * 2 / 3.1459
 
         steering =  50 * (1 + coefficient)
@@ -111,13 +75,8 @@ def find_border(img):
         speed = 0
         #speed = 100
         steering = 50
-<<<<<<< Updated upstream
     print("steering:", steering, " speed:", speed, " angle:", angle*180/3.1459, "°")
-    #print(angle)
-=======
-    #print("steering:", steering, " speed:", speed, " angle:", angle*180/3.1459, "°")
     #print("angle: ", angle)
->>>>>>> Stashed changes
     return speed, steering, angle
 
 def draw_arrow(img, speed, steering, angle):
@@ -130,11 +89,7 @@ def draw_arrow(img, speed, steering, angle):
     arrow_length = int((speed / 100) * max_length)
 
     # Calculate arrow tip coordinates
-<<<<<<< Updated upstream
-    tip_x = int(base_x + arrow_length * math.sin(angle))  # Horizontal deviation
-=======
     tip_x = int(base_x - arrow_length * math.sin(angle))  # Horizontal deviation
->>>>>>> Stashed changes
     tip_y = int(base_y - arrow_length * math.cos(angle))  # Vertical length
 
     # Draw the arrow on the image
