@@ -74,5 +74,6 @@ def get_movement_params(self, left_lane, right_lane):
         print("steering:", steering, " speed:", speed, " angle:", angle*180/3.1459, "°")
         #print("angle: ", angle)
         return speed, steering
-class move_arctan
-    return get_movement_params(self, left_lane, right_lane)
+class move_arctan:
+        def get_movement_params(self, left_lane, right_lane)
+            return get_movement_params(self, left_lane, right_lane)
