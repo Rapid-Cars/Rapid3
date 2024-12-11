@@ -5,8 +5,7 @@ THRESHOLD = 60  # Brightness threshold to detect dark pixels (0-255)
 TOP_PRECISION = 40      #How close to the top border should be evaluated?
 BOTTOM_PRECISION = 240
 
-class move_arctan:
-    def get_movement_params(self, left_lane, right_lane):
+def get_movement_params(self, left_lane, right_lane):
         """
         Describe how your code operates here
 
@@ -75,3 +74,5 @@ class move_arctan:
         print("steering:", steering, " speed:", speed, " angle:", angle*180/3.1459, "°")
         #print("angle: ", angle)
         return speed, steering
+class move_arctan
+    return get_movement_params(self, left_lane, right_lane)
