@@ -1,6 +1,6 @@
 from .MovementParamsOne import MovementParamsOne
 from .MovementParamsTwo import MovementParamsTwo
-from .MoveArctan import MoveArctan
+from .Move_arctan import Move_arctan
 
 def get_movement_params_instance(instance):
     """
@@ -27,8 +27,8 @@ def get_movement_params_instance(instance):
         return MovementParamsOne()
     elif instance == 'MovementParamsTwo':
         return MovementParamsTwo()
-    elif instance == 'MoveArctan':
-        return MoveArctan()
+    elif instance == 'Move_arctan':
+        return Move_arctan()
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")
