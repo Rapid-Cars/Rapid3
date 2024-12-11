@@ -4,8 +4,10 @@ import time
 # noinspection PyUnresolvedReferences
 import machine
 
-from Software.Camera.lane_recognition import *
-from Software.Camera.movement_params import *
+# noinspection PyUnresolvedReferences
+from libraries.lane_recognition import *
+# noinspection PyUnresolvedReferences
+from libraries.movement_params import *
 
 # Initialize I2C
 # Pinout:

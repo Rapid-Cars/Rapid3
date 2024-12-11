@@ -8,6 +8,7 @@ To create a new instance of `lane_recognition` or `movement_params`, follow the 
 
 1. **Navigate to the Directory:**
    Inside the `/Camera/lane_recognition` directory, create a new file named `MyClassName.py`.
+    Note: Replace "MyClassName" with the real name of the class.
 
 2. **Code Template:**
    Use the following Python code template inside your new class:
@@ -20,7 +21,7 @@ To create a new instance of `lane_recognition` or `movement_params`, follow the 
    HEIGHT = 240
    WIDTH = 320
 
-   class CenterLaneFinder:
+   class MyClassName:
         """
         ToDo: Describe how your class works here
         """
@@ -117,6 +118,7 @@ Follow the template and guidelines above to implement and customize your specifi
 
 1. **Navigate to the Directory:**
    Go to the `/Camera/movement_params` directory and create a new file named `MyClassName.py`.
+    Note: Replace "MyClassName" with the real name of the class.
 
 2. **Code Template:**
    Use the following Python code template to define your class:
@@ -126,10 +128,10 @@ Follow the template and guidelines above to implement and customize your specifi
    HEIGHT = 240
    WIDTH = 320
 
-   class MovementParamsTwo:
+   class MyClassName:
        def get_movement_params(self, left_lane, right_lane):
            """
-           Calculates speed and steering based on the detected lane positions.
+           Describe how your code operates here
 
            Parameters
            ----------
@@ -201,13 +203,18 @@ Follow the template and guidelines above to implement and customize your specifi
 ---
 
 ## How to Implement It in Your Code
+Import the required packages using:
 
+```python
+from Software.Camera.lane_recognition import * # For the OpenMV cam use: libraries.lane_recognition
+from Software.Camera.movement_params import * # For the OpenMV cam use: libraries.movement_params
+```
 After completing the steps listed above, use the following code to integrate the new instances into your project:
 
 ```python
-lane_recognition = get_lane_recognition_instance('NameOfYourClass')
+lane_recognition = get_lane_recognition_instance('NameOfYourClass') #Above: 'MyClassName'
 lane_recognition.setup(get_pixel_getter('camera'))  # For the virtual camera, use: 'virtual_cam'
-movement_params = get_movement_params_instance('NameOfYourOtherClass')
+movement_params = get_movement_params_instance('NameOfYourOtherClass') #Above: 'MyClassName'
 ```
 
 ---
