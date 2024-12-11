@@ -5,7 +5,7 @@ THRESHOLD = 70  # Darkness threshold, can be constant or dynamically adjusted
 HEIGHT = 240
 WIDTH = 320
 
-class MyClassName:
+class lane_arctan:
      """
      ToDo: Describe how your class works here
      """
