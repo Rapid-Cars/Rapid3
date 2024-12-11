@@ -1,1 +1,1 @@
-This folder contains all code wich will be used in this project.
+This folder contains all code which will be used in this project.
