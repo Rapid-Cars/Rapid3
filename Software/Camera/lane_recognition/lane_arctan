@@ -43,7 +43,7 @@ class MyClassName:
         if not self.pixel_getter:
             raise ValueError("Pixel getter has not been set up. Call setup() first.")
 
-        right_lane = []
-        left_lane = []
-
+          right_lane = []
+          left_lane = []
+          return left_lane, right_lane
         # Use this snippet to get a pixel: pixel = self.pixel_getter.get_pixel(img, x, y)
