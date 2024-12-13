@@ -1,6 +1,5 @@
-from .MovementParamsOne import MovementParamsOne
-from .MovementParamsTwo import MovementParamsTwo
-from .Move_arctan import Move_arctan
+from .CenterDeviationDriver import CenterDeviationDriver
+from .DominantLaneAngleDriver import DominantLaneAngleDriver
 
 def get_movement_params_instance(instance):
     """
@@ -15,7 +14,7 @@ def get_movement_params_instance(instance):
         name of the desired movement parameters object.
 
     Returns:
-    MovementParamsOne or MovementParamsTwo
+    CenterDeviationDriver or DominantLaneAngleDriver
         Returns an instance of the class specified by the 'instance'
         parameter.
 
@@ -23,12 +22,10 @@ def get_movement_params_instance(instance):
     ValueError
         If the 'instance' parameter does not match any known class name.
     """
-    if instance == 'MovementParamsOne':
-        return MovementParamsOne()
-    elif instance == 'MovementParamsTwo':
-        return MovementParamsTwo()
-    elif instance == 'Move_arctan':
-        return Move_arctan()
+    if instance == 'CenterDeviationDriver':
+        return CenterDeviationDriver()
+    elif instance == 'DominantLaneAngleDriver':
+        return DominantLaneAngleDriver()
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")

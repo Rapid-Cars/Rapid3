@@ -138,7 +138,20 @@ def calculate_movement_params(left_lane, right_lane):
     return calculated_speed, calculated_steering
 
 
-class MovementParamsOne:
+class CenterDeviationDriver:
+    """
+    The CenterDeviationDriver class determines the vehicle's speed and steering angle by
+    utilizing calculated deviations from the lane center. It processes these deviations
+    to evaluate how far the vehicle is from being centrally aligned and adjusts the
+    parameters accordingly. This approach ensures the vehicle maintains an optimal
+    path by dynamically adapting to detected lane boundaries.
+
+    When only one lane is present it assumes an artificial boundary on the missing side
+    to compute the center deviation. When both lanes are present, deviations for each
+    matching pair (or remaining unmatched points) are calculated. Lastly, it averages
+    these deviations to determine the final steering and speed adjustments, ensuring
+    smooth and precise navigation.
+    """
     def get_movement_params(self, left_lane, right_lane):
         return calculate_movement_params(left_lane, right_lane)
 

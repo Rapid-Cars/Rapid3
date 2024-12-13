@@ -165,9 +165,9 @@ def process_frame(img, lane_recognizer, movement_params):
 
 def start():
     pixel_getter = get_pixel_getter('virtual_cam')
-    lane_recognition = get_lane_recognition_instance('CenterLineFinder')
+    lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
     lane_recognition.setup(pixel_getter)
-    movement_params = get_movement_params_instance('MovementParamsOne')
-    load_video(lane_recognition, movement_params, 0)
+    movement_params = get_movement_params_instance('DominantLaneAngleDriver')
+    load_video(lane_recognition, movement_params, 7)
 
 start()

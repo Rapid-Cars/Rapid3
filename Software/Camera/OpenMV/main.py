@@ -22,7 +22,7 @@ clock = time.clock()
 # Set up the lane_recognition and movement_params which should be used
 lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
 lane_recognition.setup(get_pixel_getter('camera'))
-movement_params = get_movement_params_instance('MovementParamsOne')
+movement_params = get_movement_params_instance('DominantLaneAngleDriver')
 
 
 def draw_arrow(canvas, vehicle_speed, steering_angle):
