@@ -26,7 +26,10 @@ def calculate_deviation(left_border_element, right_border_element):
         indicates left deviation, zero indicates center alignment, and a positive
         value indicates right deviation.
     """
-    return ((WIDTH // 2) - ((left_border_element + right_border_element) / 2)) / (WIDTH // 2)
+    deviation = ((WIDTH // 2) - ((left_border_element + right_border_element) / 2)) / (WIDTH // 2)
+    if -0.1 < deviation < 0.1:
+        deviation = 0
+    return deviation
 
 
 def calculate_center_deviations(left_lane, right_lane):
@@ -131,6 +134,7 @@ def calculate_movement_params(left_lane, right_lane):
     for deviation in center_deviations:
         average_deviation += deviation[1]
     average_deviation = average_deviation / len(center_deviations)
+    average_deviation = average_deviation * 1.3
 
     calculated_steering = int(50 - average_deviation * 50)
 

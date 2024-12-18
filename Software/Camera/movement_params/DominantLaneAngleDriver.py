@@ -29,14 +29,17 @@ def calculate_angle(left_lane, right_lane):
         # If no valid lane is found or the lane data is insufficient, return defaults
         return speed, steering
 
-    dif = longest_array[-1][1] - longest_array[0][1]
+    dif = longest_array[-1][0] - longest_array[0][0]
 
     if dif != 0:
-        angle = math.atan((longest_array[-1][0] - longest_array[0][0]) / dif)
+        angle = math.atan((longest_array[-1][1] - longest_array[0][1]) / dif)
         coefficient = angle * 2 / math.pi
+        coefficient = coefficient * 1.8
 
         steering = 50 * (1 - coefficient)
         speed = 100 - 2 * abs(50 - steering)
+        if speed < 10:
+            speed = 10
     return speed, steering
 
 

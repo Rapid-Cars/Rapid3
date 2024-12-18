@@ -70,7 +70,7 @@ class CenterLaneFinder:
         # You can implement another lane recognition algorithm here
         # Get a pixel from the image by using: pixel = self.pixel_getter.get_pixel(img, x, y)
         left_lane, right_lane = [], []
-        y = HEIGHT // 2
+        y = (HEIGHT // 4) * 3
         mid_x = WIDTH // 2
         left = self.find_edge(img, y, mid_x, 0)
         if left is not None:

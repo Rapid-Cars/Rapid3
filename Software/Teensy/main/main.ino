@@ -25,12 +25,12 @@ int angles[5];
 
 void setup() {
   // Init esc
-  escPin = 28; //CHANGE BEFORE USE
-  escMaxSpeed = 0.15;
+  escPin = 29; //CHANGE BEFORE USE
+  escMaxSpeed = 0.08;
   esc.attach(escPin, 1000, 2000);
 
   // Init servo
-  servoPin = 24; //CHANGE BEFORE USE
+  servoPin = 28; //CHANGE BEFORE USE
   steeringServo.attach(servoPin);
 
   // Init I2C
@@ -43,7 +43,10 @@ void setup() {
   */
   Serial.begin(115200);         // Debug-Output
   Serial.println("Starting: \n");
+  setESCSpeed(20);
+  delay(100);
   setESCSpeed(0);
+  delay(1000);
   setSteeringAngle(50);
 }
 
@@ -53,9 +56,6 @@ void loop() {
   delay(15);
 
   // For testing
-  //setESCSpeed(100);
-  //delay(2000);
-  
   //driveTestCircle();
   //testESC();
   //testSteering();
@@ -89,13 +89,13 @@ void processCameraData(int speed, int angle) {
 // The speed will get multiplied with the escMaxSpeed because the car won't need to go that fast.
 void setESCSpeed(int speed) {
   speed = constrain(speed, 0, 100);
-
   if (speed == 0) {
     esc.write(0);
     return;
   }
-  speed = map(speed, 0, 100, 27, (180 * escMaxSpeed)); // Scales the speed to use it with the servo (value between 0 and 180)
-  speed = constrain(speed, 0, 180 * escMaxSpeed);
+  int maxSpeed = (int)(180 * escMaxSpeed);
+  speed = map(speed, 0, 100, 11, maxSpeed); // Scales the speed to use it with the servo (value between 0 and 180)
+  speed = constrain(speed, 0, maxSpeed);
   esc.write(speed);
 }
 
@@ -103,8 +103,8 @@ void setESCSpeed(int speed) {
 // 100 = full left, 50 = straight, 0 = full right
 void setSteeringAngle(int angle) {
   angle = constrain(angle, 0, 100);
-  angle = map(angle, 0, 100, 50, 86); // Before full right was 50 and full left was 86
-  angle = map(angle, 0, 100, 0, 180); // Scales the angle to use it with the servo (value between 0 and 180)
+  angle = 100 - angle; // In Documentation 0 is full left and 100 is full right
+  angle = map(angle, 0, 100, 69, 171); // Maps the values to the maximum angle the vehicle can achieve
   steeringServo.write(angle);
 }
 
@@ -142,50 +142,69 @@ void driveTestCircle() {
 
 // Tests the function of the motor
 void testESC() {
-  Serial.print("Testing ESC");
+  Serial.println("Testing ESC");
   setESCSpeed(0);
+  Serial.println(0);
   //setSteeringAngle(50);
   setESCSpeed(20);
+  Serial.println(20);
   delay(3000);
   setESCSpeed(40);
+  Serial.println(40);
   delay(3000);
   setESCSpeed(60);
+  Serial.println(60);
   delay(3000);
   setESCSpeed(80);
+  Serial.println(80);
   delay(3000);
   setESCSpeed(100);
+  Serial.println(100);
   delay(3000);
   setESCSpeed(0);
+  Serial.println(0);
   delay(10000);
 }
 
 // Tests the function of the steering
 void testSteering() {
-  Serial.print("Testing steering");
+  Serial.println("Testing steering");
   //setESCSpeed(0);
   setSteeringAngle(60);
+  Serial.println(60);
   delay(1000);
   setSteeringAngle(70);
+  Serial.println(70);
   delay(1000);
   setSteeringAngle(80);
+  Serial.println(80);
   delay(1000);
   setSteeringAngle(90);
+  Serial.println(90);
   delay(1000);
   setSteeringAngle(100);
+  Serial.println(100);
   delay(1000);
   setSteeringAngle(40);
+  Serial.println(40);
   delay(1000);
   setSteeringAngle(30);
+  Serial.println(30);
   delay(1000);
   setSteeringAngle(20);
+  Serial.println(20);
   delay(1000);
   setSteeringAngle(10);
+  Serial.println(10);
   delay(1000);
   setSteeringAngle(0);
+  Serial.println(0);
   delay(1000);
   setSteeringAngle(100);
+  Serial.println(100);
   delay(1000);
   setSteeringAngle(50);
+  Serial.println(50);
   delay (9000);
 }
 

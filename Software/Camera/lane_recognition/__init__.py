@@ -76,14 +76,14 @@ def get_lane_recognition_instance(instance):
 
     This function returns an instance of a lane recognition class specified by
     the given instance identifier. It currently supports two lane recognition
-    classes: 'BaseInitiatedLaneFinder' and 'CenterLineFinder'. The function can be
+    classes: 'BaseInitiatedLaneFinder' and 'CenterLaneFinder'. The function can be
     easily extended to support additional lane recognition classes by adding
     additional conditions for new identifiers.
 
     Parameters:
         instance: str
             A string identifier for the lane recognition class to instantiate. It
-            can be either 'BaseInitiatedLaneFinder' or 'CenterLineFinder'. If a
+            can be either 'BaseInitiatedLaneFinder' or 'CenterLaneFinder'. If a
             different value is provided, the function will raise a ValueError.
 
     Returns:
@@ -100,7 +100,7 @@ def get_lane_recognition_instance(instance):
     """
     if instance == 'BaseInitiatedLaneFinder':
         return BaseInitiatedLaneFinder()
-    elif instance == 'CenterLineFinder':
+    elif instance == 'CenterLaneFinder':
         return CenterLaneFinder()
     # You can implement new instances here
     else:

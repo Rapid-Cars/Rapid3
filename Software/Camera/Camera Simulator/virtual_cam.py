@@ -69,7 +69,8 @@ def set_input_and_output(selected_video):
     """
     input_path = "/home/robin/NextUP/NXP/Videos/" # Path to video file
     input_videos = ["Schikane mitlaeufig", "Schikane gegenlaeufig", "Schikane gerade", "Video 2", "Video 1 45 links",
-                    "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", "Test - Oval - Rechtsrum", "Oval im Raum", "Wasserzeichen"] # 0 - 11
+                    "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", "Test - Oval - Rechtsrum",
+                    "Oval im Raum", "Wasserzeichen", "0fahrt_uhrzeigersinn", "8fahrt_mit_blau_drunter", "8fahrt_weisser_untergrund"] # 0 - 14
     input_video = input_path + input_videos[selected_video] + ".mp4"  # Path to video + video name
     print("Processing: ", input_video)
 
@@ -165,9 +166,11 @@ def process_frame(img, lane_recognizer, movement_params):
 
 def start():
     pixel_getter = get_pixel_getter('virtual_cam')
-    lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
+    lane_recognition = get_lane_recognition_instance('CenterLaneFinder')
     lane_recognition.setup(pixel_getter)
-    movement_params = get_movement_params_instance('DominantLaneAngleDriver')
-    load_video(lane_recognition, movement_params, 7)
+    movement_params = get_movement_params_instance('CenterDeviationDriver')
+    load_video(lane_recognition, movement_params, 12)
+
+    test = 5
 
 start()
