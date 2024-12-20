@@ -67,14 +67,15 @@ def set_input_and_output(selected_video):
         tuple[str, str]: A tuple containing the full path of the input video and
         the full path of the output video.
     """
-    input_path = "/home/robin/NextUP/NXP/Videos/" # Path to video file
-    input_videos = ["Schikane mitlaeufig", "Schikane gegenlaeufig", "Schikane gerade", "Video 2", "Video 1 45 links",
-                    "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", "Test - Oval - Rechtsrum",
-                    "Oval im Raum", "Wasserzeichen", "0fahrt_uhrzeigersinn", "8fahrt_mit_blau_drunter", "8fahrt_weisser_untergrund"] # 0 - 14
+    input_path = "/home/robin/NextUP/NXP/Videos/" # Path to video file # ROBIN
+    input_videos = ["Schikane mitlaeufig", "Schikane gegenlaeufig", "Schikane gerade", "Video 2", "Video 1 45 links", # 0 - 4
+                    "Video 1 45 rechts", "Video 1", "Test - Oval - Linksrum", "Kreuzung", # 5 - 8
+                    "Test - Oval - Rechtsrum", "Oval im Raum", "Wasserzeichen", "0fahrt_uhrzeigersinn", # 9 - 12
+                    "8fahrt_mit_blau_drunter", "8fahrt_weisser_untergrund", "grosse 8 oben", "grosse 8 unten"] # 13 - 16
     input_video = input_path + input_videos[selected_video] + ".mp4"  # Path to video + video name
     print("Processing: ", input_video)
 
-    output_path = "/home/robin/NextUP/NXP/Videos/Output/" # Path to output
+    output_path = "/home/robin/NextUP/NXP/Videos/Output/" # Path to output # ROBIN
     output = output_path + input_videos[selected_video] + " - processed.avi"
 
     return input_video, output
@@ -147,6 +148,16 @@ def process_frame(img, lane_recognizer, movement_params):
 
     visuals = True # True to draw visuals on the screen, false if no visuals are needed
 
+    # Deadzone for car
+    y_start = HEIGHT - 90
+    y_end = HEIGHT
+    x_start = 80
+    x_end = WIDTH - 50
+
+    cv2.line(img, (x_start, y_start), (x_start, y_end), (255, 0, 255), 2)
+    cv2.line(img, (x_start, y_start), (x_end, y_start), (255, 0, 255), 2)
+    cv2.line(img, (x_end, y_start), (x_end, y_end), (255, 0, 255), 2)
+
     if visuals:
         # Draw left border
         if left_lane:
@@ -156,7 +167,7 @@ def process_frame(img, lane_recognizer, movement_params):
         if right_lane:
             for element in right_lane:
                 if element is not None:
-                    cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (255, 0, 0), LINE_THICKNESS)
+                    cv2.circle(img, (element[1], element[0]), CIRCLE_RADIUS, (0, 255, 0), LINE_THICKNESS)
 
         # Draw speed and steering
         # Draws the border, speed and the steering angle on the frame
@@ -166,10 +177,10 @@ def process_frame(img, lane_recognizer, movement_params):
 
 def start():
     pixel_getter = get_pixel_getter('virtual_cam')
-    lane_recognition = get_lane_recognition_instance('CenterLaneFinder')
+    lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
     lane_recognition.setup(pixel_getter)
     movement_params = get_movement_params_instance('CenterDeviationDriver')
-    load_video(lane_recognition, movement_params, 12)
+    load_video(lane_recognition, movement_params, 16)
 
     test = 5
 

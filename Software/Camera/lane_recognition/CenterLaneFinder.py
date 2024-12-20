@@ -1,7 +1,7 @@
 # Constants
 CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
-THRESHOLD = 70 # Darkness Threshold, can be a constant but can also change dynamically
+THRESHOLD = 60 # Darkness Threshold, can be a constant but can also change dynamically
 HEIGHT = 240
 WIDTH = 320
 
@@ -70,12 +70,12 @@ class CenterLaneFinder:
         # You can implement another lane recognition algorithm here
         # Get a pixel from the image by using: pixel = self.pixel_getter.get_pixel(img, x, y)
         left_lane, right_lane = [], []
-        y = (HEIGHT // 4) * 3
+        y = HEIGHT //2 #- (HEIGHT // 3) * 2
         mid_x = WIDTH // 2
-        left = self.find_edge(img, y, mid_x, 0)
+        left = self.find_edge(img, y, 10, mid_x)
         if left is not None:
             left_lane.append(left)
-        right = self.find_edge(img, y, mid_x, WIDTH)
+        right = self.find_edge(img, y, WIDTH-10, mid_x)
         if right is not None:
             right_lane.append(right)
 

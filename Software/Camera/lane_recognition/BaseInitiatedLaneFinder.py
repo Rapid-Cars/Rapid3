@@ -83,6 +83,8 @@ class BaseInitiatedLaneFinder:
         else:
             rng = range(x_max, x_min, -1)
         for x in rng:
+            if self.get_is_in_ignore_zone(x, y):
+                continue
             if self.pixel_getter.get_pixel(img, x, y) < THRESHOLD:
                 consecutive_count += 1
                 if consecutive_count >= CONSECUTIVE_PIXELS:
@@ -95,6 +97,17 @@ class BaseInitiatedLaneFinder:
             # Calculate the middle point of the element
             element = (y, (2 * first_x + consecutive_count) // 2)
         return element
+
+
+    def get_is_in_ignore_zone(self, x, y):
+        y_start = HEIGHT - 90
+        y_end = HEIGHT
+        x_start = 80
+        x_end = WIDTH - 50
+        if y_start < y < y_end:
+            if x_start < x < x_end:
+                return True
+        return False
 
     def get_lane_start(self, img):
         """
@@ -118,7 +131,7 @@ class BaseInitiatedLaneFinder:
         # x: 10 to (width // 2) - 10
         # y: Start at height - 10 then move to height // 2
         left_lane_start = None
-        for y in range(HEIGHT - 10, HEIGHT // 2, -10):
+        for y in range(HEIGHT - 10, (HEIGHT // 2) - 20, -10):
             x = 20
             while x < ((WIDTH // 2) - (2 * MAX_CONSECUTIVE_PIXELS - 10)):
                 x += MAX_CONSECUTIVE_PIXELS
@@ -132,7 +145,7 @@ class BaseInitiatedLaneFinder:
         # x: (width // 2) + 10 to width - 10
         # y: Start at height - 10 then move to height // 2
         right_lane_start = None
-        for y in range(HEIGHT - 10, HEIGHT // 2, -10):
+        for y in range(HEIGHT - 10, (HEIGHT // 2) - 20, -10):
             x = WIDTH - 20
             while x > ((WIDTH // 2) + (2 * MAX_CONSECUTIVE_PIXELS - 10)):
                 x -= MAX_CONSECUTIVE_PIXELS

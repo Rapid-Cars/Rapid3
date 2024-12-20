@@ -76,11 +76,11 @@ def calculate_center_deviations(left_lane, right_lane):
         elif right_y > left_y:
             # Different action when right y > left y
             # Implement your specific action here
-            deviations.append((left_y, calculate_deviation(0, right_x)))
+            #deviations.append((left_y, calculate_deviation(0, right_x)))
             right_index += 1
         else:
             # Compare the x values when y is identical
-            deviations.append((left_y, calculate_deviation(left_x, right_x)))
+            #deviations.append((left_y, calculate_deviation(left_x, right_x)))
             left_index += 1
             right_index += 1
 
@@ -134,11 +134,19 @@ def calculate_movement_params(left_lane, right_lane):
     for deviation in center_deviations:
         average_deviation += deviation[1]
     average_deviation = average_deviation / len(center_deviations)
-    average_deviation = average_deviation * 1.3
+    average_deviation = average_deviation * 1.7
 
     calculated_steering = int(50 - average_deviation * 50)
 
     calculated_speed = int((1 - abs(average_deviation)) * 100)
+    if calculated_speed < 5:
+        calculated_speed = 5
+    if calculated_speed > 20:
+        calculated_speed = 20
+
+    if calculated_steering < 50:
+        calculated_steering = (calculated_steering * 10) // 13
+
     return calculated_speed, calculated_steering
 
 
