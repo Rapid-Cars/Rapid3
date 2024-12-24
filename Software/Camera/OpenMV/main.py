@@ -3,6 +3,9 @@ import sensor
 import time
 # noinspection PyUnresolvedReferences
 import machine
+# noinspection PyUnresolvedReferences
+import network
+import socket
 
 # noinspection PyUnresolvedReferences
 from libraries.lane_recognition import *
@@ -23,6 +26,37 @@ clock = time.clock()
 lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
 lane_recognition.setup(get_pixel_getter('camera'))
 movement_params = get_movement_params_instance('DominantLaneAngleDriver')
+
+# Init Wifi
+SSID = "OPENMV_AP"  # Network SSID
+KEY = "1234567890"  # Network key (must be 10 chars)
+HOST = ""
+PORT = 8080
+SOCKET = None
+
+def setup_access_point():
+    network.country('DE')
+    wlan = network.WLAN(network.AP_IF)
+    wlan.config(ssid=SSID, key=KEY, channel=2)
+    wlan.active(True)
+    print("AP mode started. SSID: {} IP: {}".format(SSID, wlan.ifconfig()[0]))
+
+def stream_video(client):
+    # Read request from client
+    data = client.recv(1024)
+    # Should parse client request here
+
+    # Send multipart header
+    client.send(
+        "HTTP/1.1 200 OK\r\n"
+        "Server: OpenMV\r\n"
+        "Content-Type: multipart/x-mixed-replace;boundary=openmv\r\n"
+        "Cache-Control: no-cache\r\n"
+        "Pragma: no-cache\r\n\r\n"
+    )
+
+    while True:
+        main_loop(client)
 
 
 def draw_arrow(canvas, vehicle_speed, steering_angle):
@@ -89,10 +123,7 @@ def setup_camera():
     sensor.set_auto_whitebal(False)  # Disable automatic white balance
 
 
-setup_camera()
-
-# main loop
-while True:
+def main_loop(wifi_client = None):
     clock.tick()
     img = sensor.snapshot()  # Capture an image
 
@@ -100,16 +131,78 @@ while True:
     # Process video
     speed, steering = movement_params.get_movement_params(left_lane, right_lane)
 
+    send_speed = int(speed)
+    send_steering = int(steering)
+
     # Draw the arrow representing speed and steering
     draw_arrow(img, speed, steering)
 
+    # Send data via I2C to the Teensy ------------------------------------------
     try:
         # Format Data as CSV
-        formatted_message = f"{speed},{steering}"
+        formatted_message = f"{send_speed},{send_steering}"
         i2c.writeto(SLAVE_ADDRESS, formatted_message.encode('utf-8'))  # Send
-        print("Sent - Speed: ", speed, ", Steering: ", steering)
+        print("Sent - Speed: ", send_speed, ", Steering: ", send_steering)
     except OSError as e:
-        print("I2C Error:", e)
+        pass
+        #print("I2C Error:", e)
 
-    # noinspection PyUnresolvedReferences
-    time.sleep_ms(100)
+    # Stream video over Wi-Fi
+    # Use 192.168.4.1:8080 to connect
+    if USE_WIFI:
+        cframe = img.to_jpeg(quality=35, copy=True)
+        header = (
+                "\r\n--openmv\r\n"
+                "Content-Type: image/jpeg\r\n"
+                "Content-Length:" + str(cframe.size()) + "\r\n\r\n"
+        )
+        wifi_client.sendall(header)
+        wifi_client.sendall(cframe)
+    print(clock.fps())
+
+
+USE_WIFI = False
+server = None
+
+setup_camera()
+if USE_WIFI:
+    setup_access_point()
+
+
+# main loop
+while True:
+    if USE_WIFI:
+
+        if server is None:
+            # Create server socket
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+            # Bind and listen
+            server.bind([HOST, PORT])
+            server.listen(5)
+            # Set server socket to blocking
+            server.setblocking(True)
+
+        try:
+            print("Waiting for connections..")
+            client, addr = server.accept()
+        except OSError as e:
+            server.close()
+            server = None
+            print("server socket error:", e)
+            continue
+
+        try:
+            # set client socket timeout to 2s
+            client.settimeout(5.0)
+            print("Connected to " + addr[0] + ":" + str(addr[1]))
+            stream_video(client)
+        except OSError as e:
+            client.close()
+            print("client socket error:", e)
+            # sys.print_exception(e)
+
+        stream_video()
+    else:
+        main_loop()
+        time.sleep_ms(100)
