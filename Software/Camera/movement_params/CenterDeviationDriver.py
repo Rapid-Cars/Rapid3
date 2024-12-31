@@ -2,7 +2,7 @@ HEIGHT = 240
 WIDTH = 320
 
 
-def calculate_deviation(left_border_element, right_border_element):
+def calculate_deviation(left_border_element, right_border_element, y):
     """
     Calculate the deviation from the center position within a specified width.
 
@@ -26,7 +26,9 @@ def calculate_deviation(left_border_element, right_border_element):
         indicates left deviation, zero indicates center alignment, and a positive
         value indicates right deviation.
     """
-    deviation = ((WIDTH // 2) - ((left_border_element + right_border_element) / 2)) / (WIDTH // 2)
+    factor = 2 - ((y / HEIGHT) * 1)
+    deviation = (((WIDTH // 2) - ((left_border_element + right_border_element) / 2)) / (WIDTH // 2)) * factor
+    
     if -0.1 < deviation < 0.1:
         deviation = 0
     return deviation
@@ -71,16 +73,16 @@ def calculate_center_deviations(left_lane, right_lane):
         if left_y > right_y:
             # Different action when left y > right y
             # Implement your specific action here
-            deviations.append((left_y, calculate_deviation(left_x, WIDTH)))
+            deviations.append((left_y, calculate_deviation(left_x, WIDTH, left_y)))
             left_index += 1
         elif right_y > left_y:
             # Different action when right y > left y
             # Implement your specific action here
-            #deviations.append((left_y, calculate_deviation(0, right_x)))
+            deviations.append((left_y, calculate_deviation(0, right_x, right_y)))
             right_index += 1
         else:
             # Compare the x values when y is identical
-            #deviations.append((left_y, calculate_deviation(left_x, right_x)))
+            deviations.append((left_y, calculate_deviation(left_x, right_x, left_y)))
             left_index += 1
             right_index += 1
 
@@ -88,14 +90,14 @@ def calculate_center_deviations(left_lane, right_lane):
     while left_index < left_border_len:
         if left_lane[left_index] is not None:
             left_y, left_x = left_lane[left_index]
-            deviations.append((left_y, calculate_deviation(left_x, WIDTH + 100)))
+            deviations.append((left_y, calculate_deviation(left_x, WIDTH + 100, left_y)))
         left_index += 1
 
     # Handle any remaining right y values with no matching left y.
     while right_index < right_border_len:
         if right_lane[right_index] is not None:
             right_y, right_x = right_lane[right_index]
-            deviations.append((right_y, calculate_deviation(-100, right_x)))
+            deviations.append((right_y, calculate_deviation(-100, right_x, right_y)))
         right_index += 1
 
     return deviations
@@ -134,7 +136,7 @@ def calculate_movement_params(left_lane, right_lane):
     for deviation in center_deviations:
         average_deviation += deviation[1]
     average_deviation = average_deviation / len(center_deviations)
-    average_deviation = average_deviation * 1.7
+    average_deviation = average_deviation * 1.5
 
     calculated_steering = int(50 - average_deviation * 50)
 
@@ -145,7 +147,7 @@ def calculate_movement_params(left_lane, right_lane):
         calculated_speed = 20
 
     if calculated_steering < 50:
-        calculated_steering = (calculated_steering * 10) // 13
+        calculated_steering = (calculated_steering * 10) // 17
 
     return calculated_speed, calculated_steering
 
