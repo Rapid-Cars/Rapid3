@@ -1,9 +1,56 @@
 # Constants
-CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
+CONSECUTIVE_PIXELS = 4 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
-THRESHOLD = 70 # Darkness Threshold, can be a constant but can also change dynamically
+THRESHOLD = 50 # Darkness Threshold, can be a constant but can also change dynamically
 HEIGHT = 240
 WIDTH = 320
+
+
+def remove_duplicates(left_lane, right_lane):
+    # IF a lane element is skipped the index is not representative
+    # The y-value of the first element has to be saved and be used instead
+    if left_lane is None or right_lane is None:
+        return left_lane, right_lane
+    left_index, right_index = 0, 0
+
+    while left_index < len(left_lane) and right_index < len(right_lane):
+        left_y, left_x = left_lane[left_index]
+        right_y, right_x = right_lane[right_index]
+        if left_y < right_y:
+            right_index += 1
+        elif left_y > right_y:
+            left_index += 1
+        else:
+            if abs(left_x - right_x) < 20:
+                if left_index > right_index:
+                    # Remove all elements starting from right_index
+                    right_lane = right_lane[:right_index]
+                elif left_index < right_index:
+                    # Remove all elements starting from left_index
+                    left_lane = left_lane[:left_index]
+                else:
+                    # Remove all elements starting from both indices
+                    left_lane = left_lane[:left_index]
+                    right_lane = right_lane[:right_index]
+                # Exit the loop after truncation to avoid further processing
+                break
+            else:
+                left_index += 1
+                right_index += 1
+
+    return left_lane, right_lane
+
+
+def get_is_in_ignore_zone(x, y):
+    y_start = HEIGHT - 55
+    y_end = HEIGHT
+    x_start = 85
+    x_end = WIDTH - 55
+    if y_start < y < y_end:
+        if x_start < x < x_end:
+            return True
+    return False
+
 
 class BaseInitiatedLaneFinder:
     """
@@ -44,6 +91,9 @@ class BaseInitiatedLaneFinder:
         if not self.pixel_getter:
             raise ValueError("Pixel getter has not been set up. Call setup() first.")
 
+        global THRESHOLD
+        THRESHOLD = self.set_threshold(img)
+
         left_lane, right_lane = self.get_lanes(img)
         return left_lane, right_lane
 
@@ -51,8 +101,34 @@ class BaseInitiatedLaneFinder:
     # Lane recognition
 
     def set_threshold(self, img):
-        """Sets the threshold dynamically based on the image. Dummy function."""
-        return
+        total_normalized_brightness = 0.0  # Sum of normalized brightness values
+        valid_pixel_count = 0  # Count of valid pixels
+
+        for y in range(24, HEIGHT - 24, 10):
+            for x in range(32, WIDTH - 32, 10):
+                if not get_is_in_ignore_zone(x, y):
+                    # Get pixel brightness (assumed 8-bit value)
+                    brightness = self.pixel_getter.get_pixel(img, x, y)
+
+                    # Normalize brightness to a 0-1 range
+                    normalized_brightness = brightness / 255.0
+
+                    # Accumulate normalized brightness
+                    total_normalized_brightness += normalized_brightness
+                    valid_pixel_count += 1
+
+        # Avoid division by zero if no valid pixels
+        if valid_pixel_count == 0:
+            return 0
+
+        # Compute average normalized brightness
+        average_normalized_brightness = total_normalized_brightness / valid_pixel_count
+
+        # Scale back to 0-255 range
+        average_brightness = average_normalized_brightness * 255
+
+        return int(average_brightness / 2)
+
 
     def get_lane_element(self, img, x, y, from_left=1):
         """
@@ -83,7 +159,7 @@ class BaseInitiatedLaneFinder:
         else:
             rng = range(x_max, x_min, -1)
         for x in rng:
-            if self.get_is_in_ignore_zone(x, y):
+            if get_is_in_ignore_zone(x, y):
                 continue
             if self.pixel_getter.get_pixel(img, x, y) < THRESHOLD:
                 consecutive_count += 1
@@ -97,17 +173,6 @@ class BaseInitiatedLaneFinder:
             # Calculate the middle point of the element
             element = (y, (2 * first_x + consecutive_count) // 2)
         return element
-
-
-    def get_is_in_ignore_zone(self, x, y):
-        y_start = HEIGHT - 90
-        y_end = HEIGHT
-        x_start = 80
-        x_end = WIDTH - 50
-        if y_start < y < y_end:
-            if x_start < x < x_end:
-                return True
-        return False
 
     def get_lane_start(self, img):
         """
@@ -129,9 +194,9 @@ class BaseInitiatedLaneFinder:
         # Find left lane
         # Search params:
         # x: 10 to (width // 2) - 10
-        # y: Start at height - 10 then move to height // 2
+        # y: Start at height - 10 then move to 0
         left_lane_start = None
-        for y in range(HEIGHT - 10, (HEIGHT // 2) - 20, -10):
+        for y in range(HEIGHT - 10, 0, -10):
             x = 20
             while x < ((WIDTH // 2) - (2 * MAX_CONSECUTIVE_PIXELS - 10)):
                 x += MAX_CONSECUTIVE_PIXELS
@@ -143,9 +208,9 @@ class BaseInitiatedLaneFinder:
 
         # Search params:
         # x: (width // 2) + 10 to width - 10
-        # y: Start at height - 10 then move to height // 2
+        # y: Start at height - 10 then move to 0
         right_lane_start = None
-        for y in range(HEIGHT - 10, (HEIGHT // 2) - 20, -10):
+        for y in range(HEIGHT - 10, 0, -10):
             x = WIDTH - 20
             while x > ((WIDTH // 2) + (2 * MAX_CONSECUTIVE_PIXELS - 10)):
                 x -= MAX_CONSECUTIVE_PIXELS
@@ -182,7 +247,7 @@ class BaseInitiatedLaneFinder:
             for y in range(left_start[0], 20, -10):
                 element = self.get_lane_element(img, x, y, -1)
                 if not element:
-                    break
+                    continue
                 x = element[1]
                 left_lane.append((y, x))
 
@@ -191,8 +256,9 @@ class BaseInitiatedLaneFinder:
             for y in range(right_start[0], 20, -10):
                 element = self.get_lane_element(img, x, y, 1)
                 if not element:
-                    break
+                    continue
                 x = element[1]
                 right_lane.append((y, x))
 
-        return left_lane, right_lane
+        return remove_duplicates(left_lane, right_lane)
+
