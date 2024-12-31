@@ -13,26 +13,46 @@ import mjpeg
 from libraries.lane_recognition import *
 # noinspection PyUnresolvedReferences
 from libraries.movement_params import *
+# noinspection PyUnresolvedReferences
+from machine import LED
 
-# Initialize I2C
+# region Initialize I2C
+
 # Pinout:
 # P4: SCL
 # P5: SDA
 i2c = machine.I2C(1, freq=100000)
 SLAVE_ADDRESS = 0x12  # Address of Teensy
 
+# endregion
+
 # noinspection PyUnresolvedReferences
 clock = time.clock()
 
-# Set up the lane_recognition and movement_params which should be used
+lane_recognition_name = 'BaseContrastFinder'
+secondary_lane_recognition_name = 'BaseInitiatedLaneFinder'
+movement_params_name = 'AverageAngleDriver'
+version = "0.1.15"
+
+# region Set up the lane_recognition and movement_params which should be used
+
 # noinspection PyUnresolvedReferences
-lane_recognition = get_lane_recognition_instance('BaseInitiatedLaneFinder')
+lane_recognition = get_lane_recognition_instance(lane_recognition_name)
 # noinspection PyUnresolvedReferences
 lane_recognition.setup(get_pixel_getter('camera'))
-# noinspection PyUnresolvedReferences
-movement_params = get_movement_params_instance('DominantLaneAngleDriver')
 
-# Wi-Fi setup ----------------------------------------------------------------------
+# noinspection PyUnresolvedReferences
+secondary_lane_recognition = get_lane_recognition_instance(lane_recognition_name)
+# noinspection PyUnresolvedReferences
+secondary_lane_recognition.setup(get_pixel_getter('camera'))
+
+# noinspection PyUnresolvedReferences
+movement_params = get_movement_params_instance(movement_params_name)
+
+# endregion
+
+# region Wi-Fi setup
+
 SSID = "OPENMV_AP"  # Network SSID
 KEY = "1234567890"  # Network key (must be 10 chars)
 HOST = ""
@@ -71,7 +91,7 @@ def stream_video(wifi_client):
     None
     """
     # Read request from client
-    data = wifi_client.recv(1024)
+    _ = wifi_client.recv(1024)
     # Should parse client request here
 
     # Send multipart header
@@ -86,32 +106,69 @@ def stream_video(wifi_client):
     while True:
         main_loop(wifi_client)
 
-# End Wi-Fi Setup ------------------------------------------------------------------
+# endregion
 
-# File saving ----------------------------------------------------------------------
-CLIP_DURATION = 30              # Clip duration in seconds
+# region File saving
+
+CLIP_DURATION = 15              # Clip duration in seconds
 CLIP_FOLDER = "/sdcard/clips"   # Folder for saving clips
 FILENAME, VIDEO, START_TIME = None, None, None
-
+led = LED("LED_BLUE")
 
 def get_next_clip_index():
     """
-    Determine the next available clip index for video clips stored in a specified
-    folder. This function scans the folder to identify existing clip files in the
-    format "clip_<index>.mjpeg" and determines the next sequential index to
-    use, starting from 0 if no valid clip files are present.
-
-    Returns
-    -------
-    int
-        The next available clip index for a new file.
+    Returns the index of the next video clip based on how many files there are in the directory
     """
     files = os.listdir(CLIP_FOLDER)
-    clip_indices = [
-        int(file.split("_")[1].split(".")[0])
-        for file in files if file.startswith("clip_") and file.endswith(".mjpeg")
-    ]
-    return max(clip_indices, default=-1) + 1  # Start from 0 if no files exist
+    return len(files)
+
+
+def generate_base_name(lane_algorithm_name, secondary_lane_algorithm_name, movement_algorithm_name):
+    """
+            Generates a standardized base name for the video file based on the version
+            and the selected algorithms for lane recognition and movement parameters.
+
+            Parameters:
+            - lane_algorithm_name: str
+                Name of the primary lane recognition algorithm.
+            - secondary_lane_algorithm_name: str
+                Name of the secondary lane recognition algorithm.
+            - movement_algorithm_name: str
+                Name of the movement parameter algorithm.
+
+            Returns:
+            - str: A formatted base name string in the form:
+                "CLIP-v{version}-LR{lane_recognition_id}-SLR{secondary_lane_recognition_id}-MP{movement_algorithm_id}"
+
+            Raises:
+            - ValueError: If any provided algorithm name is invalid.
+    """
+    lane_recognition_id = {
+        "BaseInitiatedLaneFinder": 0,
+        "CenterLaneFinder": 1,
+        "BaseContrastFinder": 2
+    }.get(lane_algorithm_name, -1)  # Default to -1 if not found
+    secondary_lane_recognition_id = {
+        "BaseInitiatedLaneFinder": 0,
+        "CenterLaneFinder": 1,
+        "BaseContrastFinder": 2
+    }.get(secondary_lane_algorithm_name, -1)  # Default to -1 if not found
+
+    movement_algorithm_id = {
+        "CenterDeviationDriver": 0,
+        "DominantLaneAngleDriver": 1,
+        "AverageAngleDriver": 2,
+    }.get(movement_algorithm_name, -1)  # Default to -1 if not found
+
+    if lane_recognition_id == -1 or movement_algorithm_id == -1:
+        raise ValueError("Invalid algorithm name provided.")
+
+    # Generate the base name
+    return f"CLIP-v{version}-LR{lane_recognition_id}-SLR{secondary_lane_recognition_id}-MP{movement_algorithm_id}"
+
+
+base_name = generate_base_name(lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
+LED_STATE = True  # True for blue LED, False for green (off LED)
 
 
 def save_frame_to_file(frame):
@@ -132,10 +189,20 @@ def save_frame_to_file(frame):
     global FILENAME, VIDEO, START_TIME
     if FILENAME is None:
         global CLIP_INDEX
-        FILENAME = "{}/clip_{:05d}.mjpeg".format(CLIP_FOLDER, CLIP_INDEX)
+        FILENAME = "{}/{}_{:05d}.mjpeg".format(CLIP_FOLDER, base_name, CLIP_INDEX)
         CLIP_INDEX += 1
         VIDEO = mjpeg.Mjpeg(FILENAME)
         START_TIME = time.ticks_ms()
+        global LED_STATE
+        # Alternate LED colors between blue and green
+        if LED_STATE:  # If True, turn the LED blue
+            led.on()  # Turn on blue LED
+            LED("LED_GREEN").off()  # Ensure green is off
+        else:  # If False, turn the LED green
+            LED("LED_BLUE").off()  # Ensure blue is off
+            LED("LED_GREEN").on()  # Turn on green LED
+
+        LED_STATE = not LED_STATE  # Toggle state for next clip
         print("Saving clip to:", FILENAME)
 
     try:
@@ -148,10 +215,10 @@ def save_frame_to_file(frame):
     except Exception as exception:
         print("Failed to save clip:", exception)
 
+# endregion
 
-# End File saving ------------------------------------------------------------------
+# region Debug visuals
 
-# Debug visuals --------------------------------------------------------------------
 def draw_arrow(canvas, vehicle_speed, steering_angle):
     """
     Draws an arrow on a canvas to represent vehicle speed and steering angle. The arrow's
@@ -188,7 +255,9 @@ def draw_arrow(canvas, vehicle_speed, steering_angle):
     # Draw the arrow on the image
     canvas.draw_arrow(base_x, base_y, tip_x, tip_y, color=100, thickness=4)
 
-# End debug visuals ----------------------------------------------------------------
+# endregion
+
+# region Setup
 
 def setup_camera():
     """
@@ -213,9 +282,25 @@ def setup_camera():
     sensor.set_pixformat(sensor.GRAYSCALE)  # Grayscale mode
     sensor.set_framesize(sensor.QVGA)  # 320x240 pixels
     sensor.skip_frames(time=2000)  # Time to stabilize the camera
-    sensor.set_auto_gain(False)  # Disable automatic exposure
-    sensor.set_auto_whitebal(False)  # Disable automatic white balance
+    sensor.set_auto_gain(True)  # Disable automatic exposure
+    sensor.set_auto_whitebal(True)  # Disable automatic white balance
 
+USE_WIFI = False # Change to True if you want to stream the video
+server = None
+
+setup_camera()
+CLIP_INDEX = get_next_clip_index()
+if USE_WIFI:
+    setup_access_point()
+
+# endregion
+
+# region Main loop
+
+LAST_LEFT_LANE = []
+LAST_RIGHT_LANE = []
+LAST_LEFT_COUNT = 0
+LAST_RIGHT_COUNT = 0
 
 def main_loop(_wifi_client = None):
     """
@@ -235,6 +320,41 @@ def main_loop(_wifi_client = None):
     img = sensor.snapshot()  # Capture an image
 
     left_lane, right_lane = lane_recognition.recognize_lanes(img)
+
+    if not left_lane or not right_lane:
+        sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
+        if len(sec_left_lane) > len(left_lane):
+            left_lane = sec_left_lane
+        if len(sec_right_lane) > len(right_lane):
+            left_lane = sec_right_lane
+
+    """
+    if not left_lane:
+        global LAST_LEFT_LANE
+        left_lane = LAST_LEFT_LANE
+        global LAST_LEFT_COUNT
+        LAST_LEFT_COUNT += 1
+        if LAST_LEFT_COUNT > 3:
+            LAST_LEFT_COUNT = 0
+            LAST_LEFT_LANE = []
+    else:
+        LAST_LEFT_LANE = left_lane
+        global LAST_LEFT_COUNT
+        LAST_LEFT_COUNT = 0
+
+    if not right_lane:
+        global LAST_RIGHT_LANE
+        right_lane = LAST_RIGHT_LANE
+        global LAST_RIGHT_COUNT
+        LAST_RIGHT_COUNT += 1
+        if LAST_RIGHT_COUNT > 3:
+            LAST_RIGHT_COUNT = 0
+            LAST_RIGHT_LANE = []
+    else:
+        LAST_RIGHT_LANE = right_lane
+        global LAST_RIGHT_COUNT
+        LAST_RIGHT_COUNT = 0
+    """
     # Process video
     speed, steering = movement_params.get_movement_params(left_lane, right_lane)
 
@@ -255,7 +375,7 @@ def main_loop(_wifi_client = None):
         print("Sent - Speed: ", send_speed, ", Steering: ", send_steering)
     except OSError as exception:
         pass
-        #print("I2C Error:", e)
+        print("I2C Error:", exception)
 
     # Stream video over Wi-Fi
     # Use 192.168.4.1:8080 to connect
@@ -269,16 +389,6 @@ def main_loop(_wifi_client = None):
         _wifi_client.sendall(header)
         _wifi_client.sendall(cframe)
     print(clock.fps())
-
-
-USE_WIFI = False # Change to True if you want to stream the video
-server = None
-
-setup_camera()
-CLIP_INDEX = get_next_clip_index()
-if USE_WIFI:
-    setup_access_point()
-
 
 # main loop
 while True:
@@ -314,4 +424,5 @@ while True:
             # sys.print_exception(e)
     else:
         main_loop()
-        time.sleep_ms(100)
+
+# endregion
