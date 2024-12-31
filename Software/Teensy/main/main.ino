@@ -104,7 +104,7 @@ void setESCSpeed(int speed) {
 void setSteeringAngle(int angle) {
   angle = constrain(angle, 0, 100);
   angle = 100 - angle; // In Documentation 0 is full left and 100 is full right
-  angle = map(angle, 0, 100, 69, 171); // Maps the values to the maximum angle the vehicle can achieve
+  angle = map(angle, 0, 100, 75, 171); // Maps the values to the maximum angle the vehicle can achieve
   steeringServo.write(angle);
 }
 
