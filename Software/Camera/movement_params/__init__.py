@@ -1,5 +1,6 @@
 from .CenterDeviationDriver import CenterDeviationDriver
 from .DominantLaneAngleDriver import DominantLaneAngleDriver
+from .AverageAngleDriver import AverageAngleDriver
 
 def get_movement_params_instance(instance):
     """
@@ -26,6 +27,8 @@ def get_movement_params_instance(instance):
         return CenterDeviationDriver()
     elif instance == 'DominantLaneAngleDriver':
         return DominantLaneAngleDriver()
+    elif instance == 'AverageAngleDriver':
+        return AverageAngleDriver()
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")
