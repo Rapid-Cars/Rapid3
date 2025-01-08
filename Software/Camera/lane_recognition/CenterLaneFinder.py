@@ -1,9 +1,15 @@
 # Constants
+
 CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
-THRESHOLD = 60 # Darkness Threshold, can be a constant but can also change dynamically
+THRESHOLD = 50 # Darkness Threshold, can be a constant but can also change dynamically
+DIRECTION_CHANGE_THRESHOLD = 40
 HEIGHT = 240
 WIDTH = 320
+
+
+LAST_LEFT_LANE = None
+LAST_RIGHT_LANE = None
 
 class CenterLaneFinder:
     """
@@ -70,15 +76,57 @@ class CenterLaneFinder:
         # You can implement another lane recognition algorithm here
         # Get a pixel from the image by using: pixel = self.pixel_getter.get_pixel(img, x, y)
         left_lane, right_lane = [], []
-        y = HEIGHT // 2 #- (HEIGHT // 3) * 2
+        y = HEIGHT //2 #- (HEIGHT // 3) * 2
         mid_x = WIDTH // 2
-        left = self.find_edge(img, y, 10, mid_x-20)
+        left = self.find_edge(img, y, 10, mid_x)
         if left is not None:
             left_lane.append(left)
-        right = self.find_edge(img, y, WIDTH-10, mid_x+20)
+        right = self.find_edge(img, y, WIDTH-10, mid_x)
         if right is not None:
             right_lane.append(right)
 
+        left_lane, right_lane = self.check_for_direction_change(left_lane, right_lane)
+
+        return left_lane, right_lane
+
+    def check_for_direction_change(self, left_lane, right_lane):
+        #ToDo: Add documentation
+        global LAST_LEFT_LANE, LAST_RIGHT_LANE
+
+        if right_lane is not None and left_lane is not None:
+            if len(left_lane) > 0 and len(right_lane) > 0:
+                y, left_x = left_lane[0]
+                _, right_x = right_lane[0]
+                if abs(left_x - right_x) < DIRECTION_CHANGE_THRESHOLD:
+                    # Values of both lanes are very similar -> Ignore one element
+                    avg = (left_x + right_x) // 2
+                    left_lane[0] = [y, avg]
+                    right_lane[0] = [y, avg]
+
+        if left_lane is not None and LAST_RIGHT_LANE is not None:
+            if len(left_lane) > 0 and len(LAST_RIGHT_LANE) > 0:
+                # The left lane exists and previously there was a right lane
+                _, left_x = left_lane[0]
+                _, last_right_x = LAST_RIGHT_LANE[0]
+                if abs(left_x - last_right_x) < DIRECTION_CHANGE_THRESHOLD:
+                    # The element of the left lane is within a close distance to the previous right lane
+                    # -> Probably still the right lane
+                    right_lane = left_lane
+                    left_lane = []
+
+        if right_lane is not None and LAST_LEFT_LANE is not None:
+            if len(right_lane) > 0 and len(LAST_LEFT_LANE) > 0:
+                # The right lane exists and previously there was a left lane
+                _, right_x = right_lane[0]
+                _, last_left_x = LAST_LEFT_LANE[0]
+                if abs(right_x - last_left_x) < DIRECTION_CHANGE_THRESHOLD:
+                    # The element of the right lane is within a close distance to the previous left lane
+                    # -> Probably still the left lane
+                    left_lane = right_lane
+                    right_lane = []
+
+        LAST_LEFT_LANE = left_lane
+        LAST_RIGHT_LANE = right_lane
         return left_lane, right_lane
 
     def find_edge(self, img, y, x_start, x_end):
