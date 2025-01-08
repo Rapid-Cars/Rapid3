@@ -1,6 +1,7 @@
 from .BaseInitiatedLaneFinder import BaseInitiatedLaneFinder
 from .CenterLaneFinder import CenterLaneFinder
 from .BaseContrastFinder import BaseContrastFinder
+from .BaseInitMarc import BaseInitMarc
 
 
 class PixelGetter:
@@ -105,6 +106,8 @@ def get_lane_recognition_instance(instance):
         return CenterLaneFinder()
     elif instance == 'BaseContrastFinder':
         return BaseContrastFinder()
+    elif instance == 'BaseInitMarc':
+        return BaseInitMarc()
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")

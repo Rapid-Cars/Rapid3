@@ -29,10 +29,10 @@ SLAVE_ADDRESS = 0x12  # Address of Teensy
 # noinspection PyUnresolvedReferences
 clock = time.clock()
 
-lane_recognition_name = 'BaseContrastFinder'
-secondary_lane_recognition_name = 'BaseInitiatedLaneFinder'
-movement_params_name = 'AverageAngleDriver'
-version = "0.1.15"
+lane_recognition_name = 'CenterLaneFinder'
+secondary_lane_recognition_name = 'BaseContrastFinder'
+movement_params_name = 'CenterDeviationDriver'
+version = "0.1.18"
 
 # region Set up the lane_recognition and movement_params which should be used
 
@@ -146,12 +146,14 @@ def generate_base_name(lane_algorithm_name, secondary_lane_algorithm_name, movem
     lane_recognition_id = {
         "BaseInitiatedLaneFinder": 0,
         "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2
+        "BaseContrastFinder": 2,
+        "BaseInitMarc": 3
     }.get(lane_algorithm_name, -1)  # Default to -1 if not found
     secondary_lane_recognition_id = {
         "BaseInitiatedLaneFinder": 0,
         "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2
+        "BaseContrastFinder": 2,
+        "BaseInitMarc": 3
     }.get(secondary_lane_algorithm_name, -1)  # Default to -1 if not found
 
     movement_algorithm_id = {
@@ -321,13 +323,14 @@ def main_loop(_wifi_client = None):
 
     left_lane, right_lane = lane_recognition.recognize_lanes(img)
 
+    """
     if not left_lane or not right_lane:
         sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
         if len(sec_left_lane) > len(left_lane):
             left_lane = sec_left_lane
         if len(sec_right_lane) > len(right_lane):
             left_lane = sec_right_lane
-
+    """
     """
     if not left_lane:
         global LAST_LEFT_LANE

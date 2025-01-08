@@ -215,12 +215,14 @@ def generate_base_name(version, lane_algorithm_name, secondary_lane_algorithm_na
     lane_recognition_id = {
         "BaseInitiatedLaneFinder": 0,
         "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2
+        "BaseContrastFinder": 2,
+        "BaseInitMarc": 3
     }.get(lane_algorithm_name, -1)  # Default to -1 if not found
     secondary_lane_recognition_id = {
         "BaseInitiatedLaneFinder": 0,
         "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2
+        "BaseContrastFinder": 2,
+        "BaseInitMarc": 3
     }.get(secondary_lane_algorithm_name, -1)  # Default to -1 if not found
 
     movement_algorithm_id = {
@@ -344,7 +346,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     process_left_lane = left_lane
     process_right_lane = right_lane
     sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
-
+    """
     # Use secondary algorithm if a lane is empty
     if not left_lane or not right_lane:
         sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
@@ -375,7 +377,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
             LAST_RIGHT_LANE = []
     else:
         LAST_RIGHT_LANE = right_lane
-
+    """
     speed, steering = movement_params.get_movement_params(process_left_lane, process_right_lane)
 
     # region Draws the debug visualizations
@@ -383,7 +385,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     draw_search_area(img, main_lane_recognition) # NOT Implemented yet
 
     # Draws the ignore zone (zone where the car is visible
-    draw_ignore_zone(img, gray)
+    #draw_ignore_zone(img, gray)
 
     # Draws the found lane markings
     draw_lanes(img, left_lane, right_lane, 5, (255, 0, 0), (0, 255, 0), 1)
@@ -428,11 +430,11 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "BaseContrastFinder"
+    main_lane_recognition_name = "BaseInitMarc"
     secondary_lane_recognition_name = "BaseInitiatedLaneFinder"
-    movement_params_name = "AverageAngleDriver"
+    movement_params_name = "DominantLaneAngleDriver"
 
-    version = "0.1.15"
+    version = "0.1.18"
     """
     Note for input_path:
     - The input path is specific to each user
@@ -447,8 +449,8 @@ def start():
     - The file extension must be ".mp4"
     - You must include the file extension
     """
-    input_path = "/home/robin/NextUP/NXP/Driving Clips/" # Specific to user
-    video_name = "CLIP-v0.1.14-LR2-SLR0-MP2_00027" + ".mp4" # Enter the name of the video file here
+    input_path = "/home/robmroi/Downloads/Clips/" # Specific to user
+    video_name = "CLIP-v0.1.17-LR1-SLR2-MP0_00001" + ".mp4" # Enter the name of the video file here
     base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
