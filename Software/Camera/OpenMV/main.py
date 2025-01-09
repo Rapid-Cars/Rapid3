@@ -43,8 +43,9 @@ lane_recognition.setup(get_pixel_getter('camera'))
 
 # noinspection PyUnresolvedReferences
 secondary_lane_recognition = get_lane_recognition_instance(lane_recognition_name)
-# noinspection PyUnresolvedReferences
-secondary_lane_recognition.setup(get_pixel_getter('camera'))
+if secondary_lane_recognition:
+    # noinspection PyUnresolvedReferences
+    secondary_lane_recognition.setup(get_pixel_getter('camera'))
 
 # noinspection PyUnresolvedReferences
 movement_params = get_movement_params_instance(movement_params_name)
