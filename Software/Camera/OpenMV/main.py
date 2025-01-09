@@ -322,15 +322,14 @@ def main_loop(_wifi_client = None):
     img = sensor.snapshot()  # Capture an image
 
     left_lane, right_lane = lane_recognition.recognize_lanes(img)
+    if secondary_lane_recognition:
+        if not left_lane or not right_lane:
+            sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
+            if len(sec_left_lane) > len(left_lane):
+                left_lane = sec_left_lane
+            if len(sec_right_lane) > len(right_lane):
+                left_lane = sec_right_lane
 
-    """
-    if not left_lane or not right_lane:
-        sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
-        if len(sec_left_lane) > len(left_lane):
-            left_lane = sec_left_lane
-        if len(sec_right_lane) > len(right_lane):
-            left_lane = sec_right_lane
-    """
     """
     if not left_lane:
         global LAST_LEFT_LANE

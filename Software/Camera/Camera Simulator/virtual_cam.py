@@ -345,15 +345,16 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     left_lane, right_lane = main_lane_recognition.recognize_lanes(gray)
     process_left_lane = left_lane
     process_right_lane = right_lane
-    sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
-    """
-    # Use secondary algorithm if a lane is empty
-    if not left_lane or not right_lane:
+    if secondary_lane_recognition:
         sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
-        if len(sec_left_lane) > len(left_lane):
-            process_left_lane = sec_left_lane
-        if len(sec_right_lane) > len(right_lane):
-            process_right_lane = sec_right_lane
+        # Use secondary algorithm if a lane is empty
+        if not left_lane or not right_lane:
+            sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
+            if len(sec_left_lane) > len(left_lane):
+                process_left_lane = sec_left_lane
+            if len(sec_right_lane) > len(right_lane):
+                process_right_lane = sec_right_lane
+
 
     # If a lane is still empty the last recorded lane will be used instead
     if not left_lane:
@@ -377,7 +378,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
             LAST_RIGHT_LANE = []
     else:
         LAST_RIGHT_LANE = right_lane
-    """
+
     speed, steering = movement_params.get_movement_params(process_left_lane, process_right_lane)
 
     # region Draws the debug visualizations
@@ -389,7 +390,8 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
 
     # Draws the found lane markings
     draw_lanes(img, left_lane, right_lane, 5, (255, 0, 0), (0, 255, 0), 1)
-    draw_lanes(img, sec_left_lane, sec_right_lane, 5, (200, 0, 200), (0, 200, 200), 1)
+    if secondary_lane_recognition:
+        draw_lanes(img, sec_left_lane, sec_right_lane, 5, (200, 0, 200), (0, 200, 200), 1)
     draw_lanes(img, process_left_lane, process_right_lane, 2, (100, 0, 255), (0, 100, 255), -1)
 
     # Draws the speed and steering value of the car
@@ -431,7 +433,7 @@ def start():
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
     main_lane_recognition_name = "BaseInitMarc"
-    secondary_lane_recognition_name = "BaseInitiatedLaneFinder"
+    secondary_lane_recognition_name = "None"
     movement_params_name = "DominantLaneAngleDriver"
 
     version = "0.1.18"
@@ -459,7 +461,8 @@ def start():
     main_lane_recognition = get_lane_recognition_instance(main_lane_recognition_name)
     main_lane_recognition.setup(pixel_getter)
     secondary_lane_recognition = get_lane_recognition_instance(secondary_lane_recognition_name)
-    secondary_lane_recognition.setup(pixel_getter)
+    if secondary_lane_recognition:
+        secondary_lane_recognition.setup(pixel_getter)
     movement_params = get_movement_params_instance(movement_params_name)
 
     # Process video
