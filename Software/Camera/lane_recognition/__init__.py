@@ -111,3 +111,26 @@ def get_lane_recognition_instance(instance):
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")
+
+
+def get_lane_recognition_id(instance_name):
+    """
+            Retrieves the lane recognition ID corresponding to a given instance name.
+
+            This function maps specific lane recognition algorithms (represented by their instance names)
+            to unique numeric IDs. If the provided instance name does not match any predefined
+            algorithm, the function returns a default value of -1.
+
+            Parameters:
+                instance_name (str): The name of the movement algorithm instance to retrieve the ID for.
+
+            Returns:
+                int: The numeric ID corresponding to the instance name, or -1 if the name is not found.
+        """
+    lane_recognition_id = {
+        "BaseInitiatedLaneFinder": 0,
+        "CenterLaneFinder": 1,
+        "BaseContrastFinder": 2,
+        "BaseInitMarc": 3
+    }.get(instance_name, -1)  # Default to -1 if not found
+    return lane_recognition_id

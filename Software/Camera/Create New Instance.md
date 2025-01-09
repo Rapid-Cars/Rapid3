@@ -89,28 +89,42 @@ To create a new instance of `lane_recognition` or `movement_params`, follow the 
 
 1. **Implementation in** `__init__.py`:
 
-Inside `/Camera/lane_recognition/__init__.py`, do the following:
+    Inside `/Camera/lane_recognition/__init__.py`, do the following:
 
-**4.1. Import the new class:**
+    **4.1. Import the new class:**
+    
+    ```python
+    # Import the custom class you created
+    from .MyClassName import MyClassName
+    ```
+    
+    **4.2. Extend the** `get_lane_recognition_instance(instance)` function:
+    
+    Navigate to the function `get_lane_recognition_instance(instance)` and add the following condition inside the `if` statement:
+    
+    ```python
+    # Add this condition to instantiate your new class
+    elif instance == 'MyClassName':
+        return MyClassName()
+    ```
+    
+    ```
+    Note: This step ensures that `MyClassName` can be dynamically instantiated when `get_lane_recognition_instance(instance)` is called with the appropriate argument.
+    ```
 
-```python
-# Import the custom class you created
-from .MyClassName import MyClassName
-```
-
-**4.2. Extend the** `get_lane_recognition_instance(instance)` function:
-
-Navigate to the function `get_lane_recognition_instance(instance)` and add the following condition inside the `if` statement:
-
-```python
-# Add this condition to instantiate your new class
-elif instance == 'MyClassName':
-    return MyClassName()
-```
-
-```
-Note: This step ensures that `MyClassName` can be dynamically instantiated when `get_lane_recognition_instance(instance)` is called with the appropriate argument.
-```
+    **4.3. Extend the** `get_lane_recognition_id(instance)` function:
+    
+    Navigate to the function `get_lane_recognition_id(instance)` and add the following condition:
+    
+    ```python
+    ... # Previous code
+    'AlreadyImplementedAlgorithmName': <Number>, # Last algorithm that was already implemented. You have to add the "," at the end
+    'MyClassName': <Number + 1>
+    ```
+    
+    ```
+    Note: Make sure to add a "," behind the last statement that was there already. Do not add one after your own implementation!
+    ```
 
 ---
 
@@ -197,6 +211,20 @@ Follow the template and guidelines above to implement and customize your specifi
 
    ***Note****:* This step ensures that `MyClassName` can be dynamically instantiated when `get_movement_params_instance(instance)` is invoked with the corresponding argument.
 
+    **4.3. Extend the** `get_movement_params_id(instance)` function:
+
+    Navigate to the function `get_movement_params_id(instance)` and add the following condition:
+
+    ```python
+    ... # Previous code
+    'AlreadyImplementedAlgorithmName': <Number>, # Last algorithm that was already implemented. You have to add the "," at the end
+    'MyClassName': <Number + 1>
+    ```
+
+    ```
+    Note: Make sure to add a "," behind the last statement that was there already. Do not add one after your own implementation!
+    ```
+
 ---
 
 Follow the template and guidelines above to implement and customize your specific requirements for movement calculation.
@@ -212,7 +240,7 @@ from Software.Camera.lane_recognition import * # For the OpenMV cam use: librari
 from Software.Camera.movement_params import * # For the OpenMV cam use: libraries.movement_params
 ```
 
-Note: The directories `lane_recognition` and `movement_params` have to be moved inside of the directory `libraries` on the OpenMV cam for this to work. 
+Note: The directories `lane_recognition` and `movement_params` have to be moved inside the directory `libraries` on the OpenMV cam for this to work. 
 
 After completing the steps listed above, use the following code to integrate the new instances into your project:
 

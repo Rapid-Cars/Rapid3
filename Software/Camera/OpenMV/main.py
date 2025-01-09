@@ -143,24 +143,12 @@ def generate_base_name(lane_algorithm_name, secondary_lane_algorithm_name, movem
             Raises:
             - ValueError: If any provided algorithm name is invalid.
     """
-    lane_recognition_id = {
-        "BaseInitiatedLaneFinder": 0,
-        "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2,
-        "BaseInitMarc": 3
-    }.get(lane_algorithm_name, -1)  # Default to -1 if not found
-    secondary_lane_recognition_id = {
-        "BaseInitiatedLaneFinder": 0,
-        "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2,
-        "BaseInitMarc": 3
-    }.get(secondary_lane_algorithm_name, -1)  # Default to -1 if not found
-
-    movement_algorithm_id = {
-        "CenterDeviationDriver": 0,
-        "DominantLaneAngleDriver": 1,
-        "AverageAngleDriver": 2,
-    }.get(movement_algorithm_name, -1)  # Default to -1 if not found
+    # noinspection PyUnresolvedReferences
+    lane_recognition_id = get_lane_recognition_id(lane_algorithm_name)
+    # noinspection PyUnresolvedReferences
+    secondary_lane_recognition_id = get_lane_recognition_id(secondary_lane_algorithm_name)
+    # noinspection PyUnresolvedReferences
+    movement_algorithm_id = get_movement_params_id(movement_algorithm_name)
 
     if lane_recognition_id == -1 or movement_algorithm_id == -1:
         raise ValueError("Invalid algorithm name provided.")

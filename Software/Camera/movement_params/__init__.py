@@ -32,3 +32,25 @@ def get_movement_params_instance(instance):
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")
+
+
+def get_movement_params_id(instance_name):
+    """
+        Retrieves the movement parameter ID corresponding to a given instance name.
+
+        This function maps specific movement algorithms (represented by their instance names)
+        to unique numeric IDs. If the provided instance name does not match any predefined
+        algorithm, the function returns a default value of -1.
+
+        Parameters:
+            instance_name (str): The name of the movement algorithm instance to retrieve the ID for.
+
+        Returns:
+            int: The numeric ID corresponding to the instance name, or -1 if the name is not found.
+    """
+    movement_algorithm_id = {
+        "CenterDeviationDriver": 0,
+        "DominantLaneAngleDriver": 1,
+        "AverageAngleDriver": 2,
+    }.get(instance_name, -1)  # Default to -1 if not found
+    return movement_algorithm_id
