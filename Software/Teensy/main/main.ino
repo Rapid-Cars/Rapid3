@@ -17,11 +17,14 @@ Servo steeringServo;
 #define BUFFER_SIZE 32
 char buffer[BUFFER_SIZE];
 
-int speed = 0;      // Speed of the motor
+int speed = 0;   // Speed of the motor
 int angle = 0;   // Steering angle of the servo
 int count = 0;
 int speeds[5];
 int angles[5];
+
+unsigned long lastReceiveTime = 0; // Tracks the last time data was received
+const unsigned long timeout = 200; // 200 millisecond timeout
 
 void setup() {
   // Init esc
@@ -51,9 +54,21 @@ void setup() {
 }
 
 void loop() {
-  // Process data from the camera
-  processCameraData(speed, angle);
-  delay(15);
+  // Check for timeout
+  if (millis() - lastReceiveTime > timeout) {
+    Serial.println("Timeout: No data received for 5 seconds. Stopping car.");
+    setESCSpeed(0); // Stop the car
+    setSteeringAngle(50); // Set steering to neutral
+    delay(2000);
+    //exit(0); // Exit the program
+  } else {
+    // Process data from the camera
+    processCameraData(speed, angle);
+    delay(10);
+  }
+
+
+  
 
   // For testing
   //driveTestCircle();
@@ -118,6 +133,9 @@ void receiveEvent(int numBytes) {
 
   // Process CSV Input
   sscanf(buffer, "%d,%d", &speed, &angle);
+
+  lastReceiveTime = millis();
+
   // Output received Data
   Serial.print("Empfangen - Speed: ");
   Serial.print(speed);
