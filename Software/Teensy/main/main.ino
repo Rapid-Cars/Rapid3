@@ -2,11 +2,13 @@
 // The library Servo.h provides the functions for the motor and servo
 #include "Servo.h"
 #include <Wire.h>
+#include <DFRobot_VL53L0X.h> // For the TOF sensor
 
 //Constants for this project
 //Motor / ESC
 int escPin; // The pin where the ESC is attached to the Teensy
 float escMaxSpeed; // Maximum speed of the motor (between 0.15 and 1)
+float sensorMaxSpeed;
 Servo esc;
 
 //Servo
@@ -26,26 +28,45 @@ int angles[5];
 unsigned long lastReceiveTime = 0; // Tracks the last time data was received
 const unsigned long timeout = 200; // 200 millisecond timeout
 
+unsigned long lastSensorRead = 0;
+const unsigned long sensorInterval = 100;
+
+// Create an instance of the VL53L0X sensor
+DFRobot_VL53L0X sensor;
+
 void setup() {
-  // Init esc
-  escPin = 29; //CHANGE BEFORE USE
-  escMaxSpeed = 0.08;
-  esc.attach(escPin, 1000, 2000);
-
-  // Init servo
-  servoPin = 28; //CHANGE BEFORE USE
-  steeringServo.attach(servoPin);
-
-  // Init I2C
-  Wire.begin(0x12); // Teensy as Slave with adress 0x12
-  Wire.onReceive(receiveEvent); // Callback for received data
   /*
   Pinout:
+  P16: SCL1
+  17: SDA1
+
   P19: SCL
   18: SDA
   */
-  Serial.begin(115200);         // Debug-Output
+  Serial.begin(115200);// Debug-Output
   Serial.println("Starting: \n");
+
+  // Init esc
+  escPin = 29;
+  escMaxSpeed = 0.08;
+  sensorMaxSpeed = 1;
+  esc.attach(escPin, 1000, 2000);
+
+  // Init servo
+  servoPin = 28;
+  steeringServo.attach(servoPin);
+
+  // Init camera I2C
+  Wire2.begin(0x12); // Teensy as Slave with adress 0x12
+  Wire2.onReceive(receiveEvent); // Callback for received data
+
+  // Init TOF I2C bus (for the VL53L0X sensor)
+  Wire.begin();
+  Wire.setClock(100000);
+  sensor.begin(0x29); //Set I2C sub-device address
+  sensor.setMode(sensor.eContinuous, sensor.eHigh);
+  sensor.start();
+
   setESCSpeed(20);
   delay(100);
   setESCSpeed(0);
@@ -56,26 +77,39 @@ void setup() {
 void loop() {
   // Check for timeout
   if (millis() - lastReceiveTime > timeout) {
-    Serial.println("Timeout: No data received for 5 seconds. Stopping car.");
+    Serial.println("Timeout: No data received for 200 milliseconds. Stopping car.");
     setESCSpeed(0); // Stop the car
     setSteeringAngle(50); // Set steering to neutral
     delay(2000);
     //exit(0); // Exit the program
   } else {
     // Process data from the camera
+    if (millis() - lastSensorRead >= sensorInterval) {
+      lastSensorRead = millis();
+      processSensorData();
+    }
     processCameraData(speed, angle);
     delay(10);
   }
-
-
-  
-
   // For testing
   //driveTestCircle();
   //testESC();
   //testSteering();
   //exit(0);
 }
+
+// Dummy function to process data from the VL53L0X sensor
+void processSensorData() {
+  sensorMaxSpeed = 1;
+  float distance = sensor.getDistance();
+  if (distance<1 || distance > 2000) {
+    return;
+  }
+  if (distance < 100) {
+    sensorMaxSpeed = 0;
+  }
+}
+
 
 // Processes the motor speed and steering angle.
 // Uses the last five values for each to build an average value.
@@ -108,7 +142,7 @@ void setESCSpeed(int speed) {
     esc.write(0);
     return;
   }
-  int maxSpeed = (int)(180 * escMaxSpeed);
+  int maxSpeed = (int)(180 * escMaxSpeed * sensorMaxSpeed);
   speed = map(speed, 0, 100, 11, maxSpeed); // Scales the speed to use it with the servo (value between 0 and 180)
   speed = constrain(speed, 0, maxSpeed);
   esc.write(speed);
@@ -126,8 +160,8 @@ void setSteeringAngle(int angle) {
 // Callback: receive data from Master (cam)
 void receiveEvent(int numBytes) {
   int i = 0;
-  while (Wire.available() && i < BUFFER_SIZE - 1) {
-    buffer[i++] = Wire.read();
+  while (Wire2.available() && i < BUFFER_SIZE - 1) {
+    buffer[i++] = Wire2.read();
   }
   buffer[i] = '\0'; // Terminate string
 
