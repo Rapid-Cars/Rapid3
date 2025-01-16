@@ -29,7 +29,7 @@ const unsigned long timeout = 200; // 200 millisecond timeout
 void setup() {
   // Init esc
   escPin = 29; //CHANGE BEFORE USE
-  escMaxSpeed = 0.08;
+  escMaxSpeed = 0.15;
   esc.attach(escPin, 1000, 2000);
 
   // Init servo
