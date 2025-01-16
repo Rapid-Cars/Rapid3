@@ -134,7 +134,7 @@ def calculate_movement_params(left_lane, right_lane):
     for deviation in center_deviations:
         average_deviation += deviation[1]
     average_deviation = average_deviation / len(center_deviations)
-    average_deviation = average_deviation * 1.7
+    average_deviation = average_deviation * 1.9
 
     calculated_steering = int(50 - average_deviation * 50)
     if calculated_steering < 0:
@@ -143,13 +143,11 @@ def calculate_movement_params(left_lane, right_lane):
         calculated_steering = 100
 
     calculated_speed = int((1 - abs(average_deviation)) * 100)
-    if calculated_speed < 5:
-        calculated_speed = 5
-    if calculated_speed > 20:
-        calculated_speed = 20
-
-    if calculated_steering < 50:
-        calculated_steering = (calculated_steering * 10) // 13
+    calculated_steering = calculated_speed * 1.5
+    if calculated_speed < 10:
+        calculated_speed = 10
+    if calculated_speed > 100:
+        calculated_speed = 100
 
     return calculated_speed, calculated_steering
 

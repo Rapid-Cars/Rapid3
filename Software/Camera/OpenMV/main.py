@@ -30,9 +30,9 @@ SLAVE_ADDRESS = 0x12  # Address of Teensy
 clock = time.clock()
 
 lane_recognition_name = 'CenterLaneFinder'
-secondary_lane_recognition_name = 'BaseContrastFinder'
+secondary_lane_recognition_name = 'None'
 movement_params_name = 'CenterDeviationDriver'
-version = "0.1.18"
+version = "0.2.10"
 
 # region Set up the lane_recognition and movement_params which should be used
 
