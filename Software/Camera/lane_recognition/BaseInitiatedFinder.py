@@ -2,6 +2,7 @@
 HEIGHT = 240
 WIDTH = 320
 
+# region Static functions -----------------------------------------------------------------
 
 def remove_duplicates(left_lane, right_lane):
     """
@@ -81,9 +82,14 @@ def get_is_in_ignore_zone(x, y):
             return True
     return False
 
+# endregion
+
+# region Super Class BaseInitiatedFinder --------------------------------------------------
 
 class BaseInitiatedFinder:
     MAX_CONSECUTIVE_PIXELS = None  # To be overridden by subclasses
+
+    # region setup
 
     def __init__(self):
         self.pixel_getter = None
@@ -98,6 +104,12 @@ class BaseInitiatedFinder:
             raise ValueError("Pixel getter has not been set up. Call setup() first.")
         return self.get_lanes(img)
 
+    # endregion
+
+    def get_lane_element(self, img, x, y):
+        raise NotImplementedError("Subclasses must implement get_lane_element method.")
+
+    # region Shared functions
 
     def get_lane_start(self, img):
         """
@@ -149,6 +161,26 @@ class BaseInitiatedFinder:
 
 
     def get_lanes(self, img):
+        """
+        Detect and extract left and right lane boundaries from an image.
+
+        This function identifies the starting points of the left and right lanes and then iteratively
+        traces the lane boundaries by extracting lane elements at regular intervals. The identified
+        lanes are returned after removing duplicates to ensure accuracy.
+
+        Parameters
+        ----------
+        img : ndarray
+            The input image from which lane boundaries need to be detected. The image should
+            be pre-processed to enhance lane visibility if required.
+
+        Returns
+        -------
+        tuple
+            A tuple containing two lists:
+            - left_lane: List of tuples representing the (y, x) coordinates of the left lane boundary.
+            - right_lane: List of tuples representing the (y, x) coordinates of the right lane boundary.
+        """
         left_lane = []
         right_lane = []
 
@@ -174,10 +206,11 @@ class BaseInitiatedFinder:
 
         return remove_duplicates(left_lane, right_lane)
 
+    # endregion
 
-    def get_lane_element(self, img, x, y):
-        raise NotImplementedError("Subclasses must implement get_lane_element method.")
+# endregion
 
+# region BaseInitiatedContrastFinder ------------------------------------------------------
 
 class BaseInitiatedContrastFinder(BaseInitiatedFinder):
     MAX_CONSECUTIVE_PIXELS = 30  # If the consecutive pixels exceed this value it won't be counted as a lane
@@ -185,6 +218,9 @@ class BaseInitiatedContrastFinder(BaseInitiatedFinder):
 
 
     def get_dif(self, first_pixel, second_pixel):
+        """
+        Calculate the difference in brightness between two pixels.
+        """
         if first_pixel > second_pixel:
             return first_pixel - second_pixel
         else:
@@ -192,6 +228,29 @@ class BaseInitiatedContrastFinder(BaseInitiatedFinder):
 
 
     def get_lane_element(self, img, x, y):
+        """
+        Identify a lane element at a specific position in the image.
+
+        This function scans a horizontal range around the given x-coordinate at a specific y-coordinate
+        in the image to detect a significant difference in pixel intensity (contrast). When such a difference is
+        found, it determines the midpoint of the detected range as the lane element's position.
+
+        Parameters
+        ----------
+        img : ndarray
+            The input image in which the lane element needs to be detected.
+
+        x : int
+            The x-coordinate around which the search for the lane element begins.
+
+        y : int
+            The y-coordinate at which the search for the lane element is performed.
+
+        Returns
+        -------
+        tuple or None
+            A tuple (y, x) representing the detected lane element's position, or None if no element is found.
+        """
         element = None
         x_min = max(x - self.MAX_CONSECUTIVE_PIXELS - 10, 0)
         x_max = min(x + self.MAX_CONSECUTIVE_PIXELS + 10, WIDTH - 2)
@@ -217,6 +276,9 @@ class BaseInitiatedContrastFinder(BaseInitiatedFinder):
 
         return element
 
+# endregion
+
+# region BaseInitiatedDarknessFinder ------------------------------------------------------
 
 class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
     CONSECUTIVE_PIXELS = 4  # Number of pixels in a row for it to count as an edge
@@ -225,6 +287,23 @@ class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
 
 
     def set_threshold(self, img):
+        """
+        Calculate the average brightness of an image and set a threshold for lane detection.
+
+        This function analyzes the pixel brightness across the image, excluding specified ignore zones,
+        to compute the average brightness. The computed value is used as a threshold for lane detection,
+        ensuring the process adapts to varying lighting conditions.
+
+        Parameters
+        ----------
+        img : ndarray
+            The input image from which the brightness threshold is calculated.
+
+        Returns
+        -------
+        int
+            The calculated brightness threshold, scaled down to ensure it is suitable for lane detection.
+        """
         total_normalized_brightness = 0.0  # Sum of normalized brightness values
         valid_pixel_count = 0  # Count of valid pixels
 
@@ -296,3 +375,5 @@ class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
             # Calculate the middle point of the element
             element = (y, (2 * first_x + consecutive_count) // 2)
         return element
+
+# endregion
