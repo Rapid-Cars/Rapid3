@@ -39,13 +39,19 @@ def remove_duplicates(left_lane, right_lane):
 
 
 def get_is_in_ignore_zone(x, y):
-    # ToDO: Create dynamic ignore zone
-    y_start = HEIGHT - 55
-    y_end = HEIGHT
-    x_start = 85
-    x_end = WIDTH - 55
-    if y_start < y < y_end:
-        if x_start < x < x_end:
+    """
+    Checks whether the given point is in the ignore zone.
+
+    Parameters:
+            x: int - The x coordinate to be checked.
+            y: int - The y coordinate to be checked.
+    """
+    y_min = HEIGHT
+    y_max = HEIGHT - 50  # For position 3
+    x_min = 70
+    x_max = WIDTH - 75
+    if y_max < y < y_min:
+        if x_min < x < x_max:
             return True
     return False
 
@@ -56,13 +62,16 @@ class BaseInitiatedFinder:
     def __init__(self):
         self.pixel_getter = None
 
+
     def setup(self, pixel_getter):
         self.pixel_getter = pixel_getter
+
 
     def recognize_lanes(self, img):
         if not self.pixel_getter:
             raise ValueError("Pixel getter has not been set up. Call setup() first.")
         return self.get_lanes(img)
+
 
     def get_lane_start(self, img):
         """
@@ -90,7 +99,7 @@ class BaseInitiatedFinder:
             x = 20
             while x < ((WIDTH // 2) - (2 * self.MAX_CONSECUTIVE_PIXELS - 10)):
                 x += self.MAX_CONSECUTIVE_PIXELS
-                element = self.get_lane_element(img, x, y, -1)
+                element = self.get_lane_element(img, x, y)
                 if element:
                     left_lane_start = element
                     break
@@ -104,13 +113,14 @@ class BaseInitiatedFinder:
             x = WIDTH - 20
             while x > ((WIDTH // 2) + (2 * self.MAX_CONSECUTIVE_PIXELS - 10)):
                 x -= self.MAX_CONSECUTIVE_PIXELS
-                element = self.get_lane_element(img, x, y, 1)  # Change scan direction
+                element = self.get_lane_element(img, x, y)  # Change scan direction
                 if element:
                     right_lane_start = element
                     break
             if right_lane_start: break
 
         return left_lane_start, right_lane_start
+
 
     def get_lanes(self, img):
         left_lane = []
@@ -138,7 +148,8 @@ class BaseInitiatedFinder:
 
         return remove_duplicates(left_lane, right_lane)
 
-    def get_lane_element(self, img, x, y, from_left=1):
+
+    def get_lane_element(self, img, x, y):
         raise NotImplementedError("Subclasses must implement get_lane_element method.")
 
 
@@ -154,7 +165,7 @@ class BaseInitiatedContrastFinder(BaseInitiatedFinder):
             return second_pixel - first_pixel
 
 
-    def get_lane_element(self, img, x, y, from_left=1):
+    def get_lane_element(self, img, x, y):
         element = None
         x_min = max(x - self.MAX_CONSECUTIVE_PIXELS - 10, 0)
         x_max = min(x + self.MAX_CONSECUTIVE_PIXELS + 10, WIDTH - 2)
@@ -217,7 +228,7 @@ class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
         return int(average_brightness / 2)
 
 
-    def get_lane_element(self, img, x, y, from_left=1):
+    def get_lane_element(self, img, x, y):
         """
         Finds the lane element in a given row of an image by scanning horizontally
         from a given starting point. It detects the lane by counting consecutive
@@ -230,7 +241,6 @@ class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
             img: int[][] - A 2D array representing the grayscale image.
             x: int - The initial horizontal position to start scanning.
             y: int - The vertical row to be scanned for the lane element.
-            from_left: int - The direction to scan; 1 for left to right, -1 for right to left.
 
         Returns:
             tuple[int, int] | None: The (y, x) coordinates of the lane element's
@@ -241,10 +251,10 @@ class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
         first_x = None
         x_min = max(x - self.MAX_CONSECUTIVE_PIXELS - 10, 0)
         x_max = min(x + self.MAX_CONSECUTIVE_PIXELS + 10, WIDTH - 1)
-        if from_left == 1:
-            rng = range(x_min, x_max, 1)
-        else:
+        if x_max < x_min:
             rng = range(x_max, x_min, -1)
+        else:
+            rng = range(x_min, x_max, 1)
         for x in rng:
             if get_is_in_ignore_zone(x, y):
                 continue
