@@ -1,6 +1,5 @@
-from .BaseInitiatedLaneFinder import BaseInitiatedLaneFinder
 from .CenterLaneFinder import CenterLaneFinder
-from .BaseContrastFinder import BaseContrastFinder
+from .BaseInitiatedFinder import BaseInitiatedContrastFinder, BaseInitiatedDarknessFinder
 from .BaseInitMarc import BaseInitMarc
 
 
@@ -83,7 +82,7 @@ def get_lane_recognition_instance(instance):
 
     Parameters:
         instance: str
-            A string identifier for the lane recognition class to instantiate (e.g. 'BaseInitiatedLaneFinder' or 'CenterLaneFinder'). If a
+            A string identifier for the lane recognition class to instantiate (e.g. 'BaseInitiatedDarknessFinder' or 'CenterLaneFinder'). If a
             unknown value is provided, the function will raise a ValueError.
 
     Returns:
@@ -100,12 +99,12 @@ def get_lane_recognition_instance(instance):
     """
     if instance == 'None':
         return None
-    elif instance == 'BaseInitiatedLaneFinder':
-        return BaseInitiatedLaneFinder()
+    elif instance == 'BaseInitiatedDarknessFinder':
+        return BaseInitiatedDarknessFinder()
     elif instance == 'CenterLaneFinder':
         return CenterLaneFinder()
-    elif instance == 'BaseContrastFinder':
-        return BaseContrastFinder()
+    elif instance == 'BaseInitiatedContrastFinder':
+        return BaseInitiatedContrastFinder()
     elif instance == 'BaseInitMarc':
         return BaseInitMarc()
     # You can implement new instances here
@@ -128,9 +127,9 @@ def get_lane_recognition_id(instance_name):
                 int: The numeric ID corresponding to the instance name, or -1 if the name is not found.
         """
     lane_recognition_id = {
-        "BaseInitiatedLaneFinder": 0,
+        "BaseInitiatedDarknessFinder": 0,
         "CenterLaneFinder": 1,
-        "BaseContrastFinder": 2,
-        "BaseInitMarc": 3
+        "BaseInitiatedContrastFinder": 2,
+        "BaseInitMarc": 3,
     }.get(instance_name, -1)  # Default to -1 if not found
     return lane_recognition_id
