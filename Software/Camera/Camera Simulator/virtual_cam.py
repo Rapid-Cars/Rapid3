@@ -51,51 +51,31 @@ def draw_lane(img, lane, radius, color, line_thickness):
                 cv2.circle(img, (element[1], element[0]), radius, color, line_thickness)
 
 
-def get_ignore_zone(img):
+def get_ignore_zone():
     """
         Determines the ignore zone of the given image.
         The ignore zone is a zone in the image where the car is visible and where the lane recognition
         is therefore unreliable.
-        The zone is determined by checking for brightness changes
-
-        Parameters:
-        - img: ndarray
-            Grayscale image for processing.
 
         Returns:
         - tuple: (x_min, y_min, x_max, y_max) specifying the ignore zone's rectangle.
     """
     y_min = HEIGHT
-    y_max = HEIGHT
-    x_min = 85
-    x_max = WIDTH - 55
-
-    for y in range(HEIGHT - 20, 0, -5):
-        first_pixel = img[y, WIDTH // 2]
-        second_pixel = img[y + 5, WIDTH // 2]
-        if first_pixel > second_pixel:
-            dif = first_pixel - second_pixel
-        else:
-            dif = second_pixel - first_pixel
-        if dif > 15 and second_pixel < 60:
-            y_min = y
-            break
-
-
+    y_max = HEIGHT - 50 # For position 3
+    x_min = 70
+    x_max = WIDTH - 75
     return x_min, y_min, x_max, y_max
 
 
-def draw_ignore_zone(img, grayscale_image):
+def draw_ignore_zone(img):
     """
         Draws a rectangle on the image to represent the ignore zone.
 
         Parameters:
         - img: ndarray
             The image on which to draw the ignore zone.
-        - grayscale_image: ndarray
-            Grayscale version of the image used to determine the ignore zone.
     """
-    x_min, y_min, x_max, y_max = get_ignore_zone(grayscale_image)
+    x_min, y_min, x_max, y_max = get_ignore_zone()
     cv2.rectangle(img, (x_min, y_min), (x_max, y_max + 1), (0, 0, 0), 2)
 
 
@@ -347,7 +327,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
             if len(sec_right_lane) > len(right_lane):
                 process_right_lane = sec_right_lane
 
-
+    """
     # If a lane is still empty the last recorded lane will be used instead
     if not left_lane:
         global LAST_LEFT_LANE
@@ -370,7 +350,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
             LAST_RIGHT_LANE = []
     else:
         LAST_RIGHT_LANE = right_lane
-
+    """
     speed, steering = movement_params.get_movement_params(process_left_lane, process_right_lane)
 
     # region Draws the debug visualizations
@@ -378,7 +358,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     draw_search_area(img, main_lane_recognition) # NOT Implemented yet
 
     # Draws the ignore zone (zone where the car is visible
-    #draw_ignore_zone(img, gray)
+    draw_ignore_zone(img)
 
     # Draws the found lane markings
     draw_lanes(img, left_lane, right_lane, 5, (255, 0, 0), (0, 255, 0), 1)
@@ -424,11 +404,11 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "CenterLaneFinder"
+    main_lane_recognition_name = "BaseInitiatedDarknessFinder"
     secondary_lane_recognition_name = "None"
     movement_params_name = "CenterDeviationDriver"
 
-    version = "0.2.10"
+    version = "0.2.12"
     """
     Note for input_path:
     - The input path is specific to each user
