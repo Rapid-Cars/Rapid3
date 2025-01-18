@@ -3,7 +3,9 @@
 CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
 THRESHOLD = 50 # Darkness Threshold, can be a constant but can also change dynamically
-DIRECTION_CHANGE_THRESHOLD = 40
+DIRECTION_CHANGE_THRESHOLD = 40 # How far the border can move in a direction to still count as the other lane
+PAST_DIRECTION_CHANGE_SAVING = 10 # For how long past lanes should be saved
+COUNT_PAST_DIRECTION_CHANGE = 0
 HEIGHT = 240
 WIDTH = 320
 
@@ -90,22 +92,52 @@ class CenterLaneFinder:
         return left_lane, right_lane
 
     def check_for_direction_change(self, left_lane, right_lane):
-        #ToDo: Add documentation
+        """
+        Adjusts lane boundaries based on proximity and historical lane data.
+
+        This function checks for potential changes in lane directions by comparing the current positions
+        of the left and right lanes with previously recorded positions. If the lanes are within a defined
+        threshold, their positions are adjusted or swapped accordingly. Historical lane data is updated
+        for future comparisons.
+
+        Parameters
+        ----------
+        left_lane : list
+            A list of coordinates representing the detected left lane. Each element is a tuple (y, x).
+
+        right_lane : list
+            A list of coordinates representing the detected right lane. Each element is a tuple (y, x).
+
+        Returns
+        ----------
+        tuple
+            A tuple containing the updated left_lane and right_lane.
+
+        Notes
+        ----------
+        - The function uses a global variable `DIRECTION_CHANGE_THRESHOLD` to determine proximity.
+        - Historical lane data is stored in the global variables `LAST_LEFT_LANE` and `LAST_RIGHT_LANE`.
+        - The function maintains a counter `COUNT_PAST_DIRECTION_CHANGE` to manage the saving of empty lanes.
+        - The following scenarios are addressed:
+            1. If both lanes are close, their coordinates are averaged.
+            2. If a lane is close to a previous lane, it is reassigned.
+            3. If both lanes are empty for a sustained period, the history is reset.
+        """
         global LAST_LEFT_LANE, LAST_RIGHT_LANE
 
+        # Values of both lanes are very similar -> Use average
         if right_lane is not None and left_lane is not None:
             if len(left_lane) > 0 and len(right_lane) > 0:
                 y, left_x = left_lane[0]
                 _, right_x = right_lane[0]
                 if abs(left_x - right_x) < DIRECTION_CHANGE_THRESHOLD:
-                    # Values of both lanes are very similar -> Ignore one element
                     avg = (left_x + right_x) // 2
                     left_lane[0] = [y, avg]
                     right_lane[0] = [y, avg]
 
+        # Check if the left lane exists and there was a right lane previously
         if left_lane is not None and LAST_RIGHT_LANE is not None:
             if len(left_lane) > 0 and len(LAST_RIGHT_LANE) > 0:
-                # The left lane exists and previously there was a right lane
                 _, left_x = left_lane[0]
                 _, last_right_x = LAST_RIGHT_LANE[0]
                 if abs(left_x - last_right_x) < DIRECTION_CHANGE_THRESHOLD:
@@ -114,9 +146,9 @@ class CenterLaneFinder:
                     right_lane = left_lane
                     left_lane = []
 
+        # Check if the right lane exists and there was a left lane previously
         if right_lane is not None and LAST_LEFT_LANE is not None:
             if len(right_lane) > 0 and len(LAST_LEFT_LANE) > 0:
-                # The right lane exists and previously there was a left lane
                 _, right_x = right_lane[0]
                 _, last_left_x = LAST_LEFT_LANE[0]
                 if abs(right_x - last_left_x) < DIRECTION_CHANGE_THRESHOLD:
@@ -125,8 +157,19 @@ class CenterLaneFinder:
                     left_lane = right_lane
                     right_lane = []
 
-        LAST_LEFT_LANE = left_lane
-        LAST_RIGHT_LANE = right_lane
+        # Check if both lanes are empty and save / discard the saved lanes
+        global COUNT_PAST_DIRECTION_CHANGE
+        if not left_lane and not right_lane:
+            COUNT_PAST_DIRECTION_CHANGE += 1
+            if COUNT_PAST_DIRECTION_CHANGE > PAST_DIRECTION_CHANGE_SAVING:
+                LAST_LEFT_LANE = left_lane
+                LAST_RIGHT_LANE = right_lane
+                COUNT_PAST_DIRECTION_CHANGE = 0
+        else:
+            LAST_LEFT_LANE = left_lane
+            LAST_RIGHT_LANE = right_lane
+            COUNT_PAST_DIRECTION_CHANGE = 0
+
         return left_lane, right_lane
 
     def find_edge(self, img, y, x_start, x_end):
