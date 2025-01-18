@@ -172,6 +172,12 @@ def draw_steering(img, steering_angle):
     - img: ndarray (color image)
     - steering_angle: int (0-100, 50=neutral)
     """
+    if steering_angle < 0:
+        print(steering_angle)
+        steering_angle = 0
+    if steering_angle > 100:
+        print(steering_angle)
+        steering_angle = 50
     line_base_x = 20
     max_line_length = (WIDTH - 40) // 2
     max_line_end_x = line_base_x + max_line_length * 2
@@ -182,6 +188,7 @@ def draw_steering(img, steering_angle):
 
     line_start_x = WIDTH // 2
     line_length = int(max_line_length * (steering_angle - 50) / 100)
+    line_length = line_length * 2
     line_end_x = line_start_x + line_length
 
     cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), (0, 0, 255), 1)
