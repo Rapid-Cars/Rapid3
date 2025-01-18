@@ -4,11 +4,37 @@ WIDTH = 320
 
 
 def remove_duplicates(left_lane, right_lane):
-    # IF a lane element is skipped the index is not representative
-    # The y-value of the first element has to be saved and be used instead
+    """
+    Remove duplicate lane entries based on proximity and starting positions.
+
+    This function compares the y-coordinates and x-coordinates of elements in the
+    left and right lane lists to identify and remove duplicates. If two entries have
+    very close x-coordinates and identical y-coordinates, they are considered duplicates.
+    The function also considers which lane starts further down to decide which list to truncate.
+
+    Parameters
+    ----------
+    left_lane : list of tuple
+        A list of tuples representing the coordinates of the left lane boundary.
+
+    right_lane : list of tuple
+        A list of tuples representing the coordinates of the right lane boundary.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the modified left_lane and right_lane lists with duplicates removed.
+    """
     if left_lane is None or right_lane is None:
         return left_lane, right_lane
     left_index, right_index = 0, 0
+
+    first_left_y, first_right_y = 0, 0
+
+    if left_lane:
+        first_left_y = left_lane[left_index]
+    if right_lane:
+        first_right_y = right_lane[right_index]
 
     while left_index < len(left_lane) and right_index < len(right_lane):
         left_y, left_x = left_lane[left_index]
@@ -18,14 +44,14 @@ def remove_duplicates(left_lane, right_lane):
         elif left_y > right_y:
             left_index += 1
         else:
-            if abs(left_x - right_x) < 20:
-                if left_index > right_index:
+            if abs(left_x - right_x) < 20: # Difference between elements is very small -> Duplicate lane
+                if first_left_y > first_right_y: # Left lane start further down -> Remove right lane
                     # Remove all elements starting from right_index
                     right_lane = right_lane[:right_index]
-                elif left_index < right_index:
+                elif first_left_y < first_right_y: # Right lane starts further down -> Remove left lane
                     # Remove all elements starting from left_index
                     left_lane = left_lane[:left_index]
-                else:
+                else: # Lanes have the same start -> Remove both
                     # Remove all elements starting from both indices
                     left_lane = left_lane[:left_index]
                     right_lane = right_lane[:right_index]
@@ -49,7 +75,7 @@ def get_is_in_ignore_zone(x, y):
     y_min = HEIGHT
     y_max = HEIGHT - 50  # For position 3
     x_min = 70
-    x_max = WIDTH - 75
+    x_max = WIDTH - 70
     if y_max < y < y_min:
         if x_min < x < x_max:
             return True
