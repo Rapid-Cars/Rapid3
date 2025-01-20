@@ -234,12 +234,23 @@ def set_input_and_output(input_path, video_name, processing_name):
         Prints:
         - The paths of the input and output video files for confirmation.
     """
+    if not os.path.exists(input_path):
+        raise ValueError(f"Input path does not exist: {input_path}")
+    output_directory = os.path.join(input_path, "Processed")
+    if not os.path.exists(output_directory):
+        print("Output directory does not exist. Creating it.")
+        os.makedirs(output_directory)
+
     input_video = os.path.join(input_path, video_name)
+
+    if not os.path.exists(input_video):
+        raise ValueError(f"Input video file {input_video} does not exist.")
+
     print("Processing: ", input_video)
 
     # Remove the extension from video_name
     base_name = os.path.splitext(video_name)[0]
-    output_video = os.path.join(input_path, "Processed", f"{base_name} - Processed with {processing_name}.avi")
+    output_video = os.path.join(output_directory, f"{base_name} - Processed with {processing_name}.avi")
 
     print("Saving output to: ", output_video)
     return input_video, output_video
@@ -404,7 +415,7 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "BaseInitiatedDarknessFinder"
+    main_lane_recognition_name = "BaseInitiatedContrastFinder"
     secondary_lane_recognition_name = "None"
     movement_params_name = "CenterDeviationDriver"
 
@@ -423,8 +434,8 @@ def start():
     - The file extension must be ".mp4"
     - You must include the file extension
     """
-    input_path = "/home/robmroi/Downloads/Clips/" # Specific to user
-    video_name = "CLIP-v0.1.17-LR1-SLR2-MP0_00001" + ".mp4" # Enter the name of the video file here
+    input_path = "/home/robin/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.2.x" # Specific to user
+    video_name = "CLIP-v0.2.5-LR1-SLR-1-MP0_Drives_8_successfully" + ".mp4" # Enter the name of the video file here
     base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
