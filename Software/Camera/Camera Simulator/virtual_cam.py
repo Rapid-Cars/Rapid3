@@ -1,5 +1,7 @@
 import cv2
 import os
+import json
+import gzip
 
 from Software.Camera.lane_recognition import *
 from Software.Camera.movement_params import *
@@ -257,6 +259,110 @@ def set_input_and_output(input_path, video_name, processing_name):
 
 # endregion
 
+# region json analysis --------------------------------------------------------------------
+
+JSON_INPUT_PATH = ""
+JSON_OUTPUT_PATH = ""
+
+def set_json_path(input_path, output_path):
+    """
+    Sets JSON file paths.
+    """
+    global JSON_INPUT_PATH
+    global JSON_OUTPUT_PATH
+    if os.path.exists(input_path):
+        JSON_INPUT_PATH = input_path
+    JSON_OUTPUT_PATH = output_path
+
+
+def convert_values_to_json(frame, left_lane, right_lane, sec_left_lane, sec_right_lane, speed, steering):
+    """
+    Converts the values of the given frame to JSON.
+    """
+    data = {
+            "f": frame,
+            "ll": left_lane,
+            "rl": right_lane,
+            "sll": sec_left_lane,
+            "srl": sec_right_lane,
+            "spd": speed,
+            "str": steering
+        }
+    return data
+
+
+def save_analysis_to_file(all_frame_data):
+    """
+    Save all analyzed data to a compressed JSON file in one operation.
+
+    Parameters:
+        all_frame_data (list of dict): List of dictionaries containing data for all frames.
+        output_path (str): Path to save the compressed JSON file.
+    """
+    try:
+        # Use the given data directly and save it in one go
+        with gzip.open(JSON_OUTPUT_PATH, 'wt') as f:
+            json.dump(all_frame_data, f, separators=(',', ':'))  # Compact format
+
+        print(f"All frame data successfully saved to {JSON_OUTPUT_PATH}")
+    except Exception as e:
+        print(f"Failed to save all frame data: {e}")
+
+
+def load_analysis_from_file():
+    """
+    Load analyzed data from a JSON file.
+
+    Parameters:
+        input_path (str): Path to the JSON file.
+
+    Returns:
+        list of dict: List of dictionaries containing frame data.
+    """
+    try:
+        with gzip.open(JSON_INPUT_PATH, 'rt') as f:
+            data = json.load(f)
+        print(f"JSON-Data successfully loaded from {JSON_INPUT_PATH}")
+        return data
+    except Exception as e:
+        print(f"Failed to load data: {e}")
+        return None
+
+
+def get_frame_data(frame, data: json):
+    """
+    Retrieve data for a specific frame from the JSON file.
+
+    Parameters:
+        frame (int): The frame number to retrieve data for.
+        data (json): The json data
+
+    Returns:
+        tuple: left_lane, right_lane, sec_left_lane, sec_right_lane, speed, steering
+    """
+    try:
+        if data is None:
+            return None
+
+        for frame_data in data:
+            if frame_data.get("f") == frame:
+                # Convert back to full keys for compatibility
+                return (
+                    frame_data.get("ll"),
+                    frame_data.get("rl"),
+                    frame_data.get("sll"),
+                    frame_data.get("srl"),
+                    frame_data.get("spd"),
+                    frame_data.get("str"),
+                )
+        print(f"Frame {frame} not found in the data.")
+        return None
+    except Exception as e:
+        print(f"Failed to retrieve frame data: {e}")
+        return None
+
+# endregion
+
 # region Video processing -----------------------------------------------------------------
 
 def load_video(main_lane_recognition, secondary_lane_recognition, movement_params, input_video, output_video):
@@ -274,17 +380,25 @@ def load_video(main_lane_recognition, secondary_lane_recognition, movement_param
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(output_video, fourcc, 30.0, (320, 240))
 
+    frame_count = 1
+    json_compare_data = load_analysis_from_file()
+    output_data = []
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-
-        process_frame(frame, main_lane_recognition, secondary_lane_recognition, movement_params)
+        json_compare_frame_data = get_frame_data(frame_count, json_compare_data)
+        json_data = process_frame(frame, main_lane_recognition, secondary_lane_recognition, movement_params, json_compare_frame_data, frame_count)
+        output_data.append(json_data)
         out.write(frame)
 
         cv2.imshow('Frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        frame_count += 1
+
+    save_analysis_to_file(output_data)
 
     cap.release()
     out.release()
@@ -297,7 +411,7 @@ LAST_LEFT_COUNT = 0
 LAST_RIGHT_COUNT = 0
 
 
-def process_frame(img, main_lane_recognition, secondary_lane_recognition, movement_params):
+def process_frame(img, main_lane_recognition, secondary_lane_recognition, movement_params, json_compare_frame_data, frame_count):
     """
     Process a single video frame to recognize and highlight lane lines, and
     calculate movement parameters such as speed and steering angle.
@@ -328,6 +442,9 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     left_lane, right_lane = main_lane_recognition.recognize_lanes(gray)
     process_left_lane = left_lane
     process_right_lane = right_lane
+
+    sec_left_lane, sec_right_lane = None, None
+
     if secondary_lane_recognition:
         sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
         # Use secondary algorithm if a lane is empty
@@ -380,6 +497,22 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     # Draws the speed and steering value of the car
     draw_speed(img, speed)
     draw_steering(img, steering)
+
+    # endregion
+
+    # region json handling
+
+    # Saves the current values to a json file
+    json_data = convert_values_to_json(frame_count,
+                                       left_lane, right_lane,
+                                       sec_left_lane, sec_right_lane,
+                                       speed, steering)
+
+    # Draws the data of the given json file (json_compare_frame_data) on the screen
+
+    # Will be implemented in the future
+
+    return json_data
     # endregion
 # endregion
 
@@ -436,8 +569,14 @@ def start():
     """
     input_path = "/home/robin/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.2.x" # Specific to user
     video_name = "CLIP-v0.2.5-LR1-SLR-1-MP0_Drives_8_successfully" + ".mp4" # Enter the name of the video file here
+
+    json_input = "" + ".json" # Enter the name of the json file with which you want to compare
+
     base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
+
+    json_input_path = os.path.join(input_path, json_input)
+    json_output_path = output_video.replace(".avi", ".json")
 
     # Setup lane recognition and movement calculation algorithms
     pixel_getter = get_pixel_getter('virtual_cam') # Do NOT change
@@ -447,6 +586,8 @@ def start():
     if secondary_lane_recognition:
         secondary_lane_recognition.setup(pixel_getter)
     movement_params = get_movement_params_instance(movement_params_name)
+
+    set_json_path(json_input_path, json_output_path)
 
     # Process video
     load_video(main_lane_recognition, secondary_lane_recognition, movement_params, input_video, output_video)
