@@ -39,6 +39,7 @@ def draw_debug_visuals(img, primary, left_lane, main_lane_recognition, process_l
         sec_right_lane_color = (0, 165, 255)
         process_left_lane_color = (255, 0, 255)
         process_right_lane_color = (255, 255, 0)
+        line_thickness = 2
     else:
         left_lane_color = (128, 128, 255)
         right_lane_color = (128, 255, 128)
@@ -46,6 +47,7 @@ def draw_debug_visuals(img, primary, left_lane, main_lane_recognition, process_l
         sec_right_lane_color = (128, 200, 255)
         process_left_lane_color = (192, 128, 192)
         process_right_lane_color = (255, 255, 128)
+        line_thickness = 1
 
 
     # Draws the searchable area of the algorithm
@@ -54,9 +56,9 @@ def draw_debug_visuals(img, primary, left_lane, main_lane_recognition, process_l
     # Draws the ignore zone (zone where the car is visible
     draw_ignore_zone(img)
     # Draws the found lane markings
-    draw_lanes(img, left_lane, right_lane, 5, left_lane_color, right_lane_color, 1)
+    draw_lanes(img, left_lane, right_lane, 5, left_lane_color, right_lane_color, line_thickness)
     if secondary_lane_recognition:
-        draw_lanes(img, sec_left_lane, sec_right_lane, 5, sec_left_lane_color, sec_right_lane_color, 1)
+        draw_lanes(img, sec_left_lane, sec_right_lane, 5, sec_left_lane_color, sec_right_lane_color, line_thickness)
     draw_lanes(img, process_left_lane, process_right_lane, 2, process_left_lane_color, process_right_lane_color, -1)
     # Draws the speed and steering value of the car
     draw_speed(img, speed, primary)
@@ -365,7 +367,7 @@ def load_analysis_from_file():
         print(f"JSON-Data successfully loaded from {JSON_INPUT_PATH}")
         return data
     except Exception as e:
-        print(f"Failed to load data: {e}")
+        print(f"Failed to load json data: {e}")
         return None
 
 
@@ -535,7 +537,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     # Draws the data of the given json file (json_compare_frame_data) on the screen
 
     if not json_compare_frame_data:
-        return
+        return json_data
 
     (json_left_lane, json_right_lane,
      json_sec_left_lane, json_sec_right_lane,
@@ -598,9 +600,9 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "CenterLaneFinder"
-    secondary_lane_recognition_name = "None"
-    movement_params_name = "CenterDeviationDriver"
+    main_lane_recognition_name = "BaseInitiatedContrastFinder"
+    secondary_lane_recognition_name = "BaseInitiatedDarknessFinder"
+    movement_params_name = "CenterLaneDeviationDriver"
 
     version = "0.2.12"
     """
@@ -618,10 +620,11 @@ def start():
     - You must include the file extension
     """
     input_path = "/home/robmroi/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.2.x" # Specific to user
-    video_name = "CLIP-v0.2.1-LR1-SLR-1-MP0_Drives_of_Track_x1" + ".mp4" # Enter the name of the video file here
+    video_name = "CLIP-v0.2.10-LR1-SLR-1-MP0_Drives_of_Track_x3" + ".mp4" # Enter the name of the video file here
 
-    json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
+    json_input = "CLIP-v0.2.10-LR1-SLR-1-MP0_Drives_of_Track_x3 - Processed with v0.2.12-LR1-SLR-1-MP0" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
 
+    # region setup
     base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
@@ -638,6 +641,7 @@ def start():
     movement_params = get_movement_params_instance(movement_params_name)
 
     set_json_path(json_input_path, json_output_path)
+    # endregion
 
     # Process video
     load_video(main_lane_recognition, secondary_lane_recognition, movement_params, input_video, output_video)
