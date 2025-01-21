@@ -11,6 +11,58 @@ WIDTH = 320
 
 # region Debug visualisations -------------------------------------------------------------
 
+def draw_debug_visuals(img, primary, left_lane, main_lane_recognition, process_left_lane, process_right_lane, right_lane,
+                       sec_left_lane, sec_right_lane, secondary_lane_recognition, speed, steering):
+    """
+        Draws debug visuals on an image to aid in lane detection analysis.
+
+        Parameters:
+            img (numpy.ndarray): The image to draw on.
+            primary (bool): Indicates if primary detection mode is active.
+            left_lane (list): Coordinates of the left lane markings.
+            main_lane_recognition (lane recognition or bool): Data for the main lane recognition area (details TBD).
+            process_left_lane (list): Coordinates of intermediate processed left lane markings.
+            process_right_lane (list): Coordinates of intermediate processed right lane markings.
+            right_lane (list): Coordinates of the right lane markings.
+            sec_left_lane (list): Coordinates of secondary left lane markings.
+            sec_right_lane (list): Coordinates of secondary right lane markings.
+            secondary_lane_recognition (lane recognition or bool): Whether to display secondary lane recognition visuals.
+            speed (float): Current speed of the car.
+            steering (float): Current steering angle of the car.
+    """
+
+    # Set colors
+    if primary:
+        left_lane_color = (0, 0, 255)
+        right_lane_color = (0, 255, 0)
+        sec_left_lane_color = (255, 0, 0)
+        sec_right_lane_color = (0, 165, 255)
+        process_left_lane_color = (255, 0, 255)
+        process_right_lane_color = (255, 255, 0)
+    else:
+        left_lane_color = (128, 128, 255)
+        right_lane_color = (128, 255, 128)
+        sec_left_lane_color = (255, 128, 128)
+        sec_right_lane_color = (128, 200, 255)
+        process_left_lane_color = (192, 128, 192)
+        process_right_lane_color = (255, 255, 128)
+
+
+    # Draws the searchable area of the algorithm
+    if primary:
+        draw_search_area(img, main_lane_recognition)  # NOT Implemented yet
+    # Draws the ignore zone (zone where the car is visible
+    draw_ignore_zone(img)
+    # Draws the found lane markings
+    draw_lanes(img, left_lane, right_lane, 5, left_lane_color, right_lane_color, 1)
+    if secondary_lane_recognition:
+        draw_lanes(img, sec_left_lane, sec_right_lane, 5, sec_left_lane_color, sec_right_lane_color, 1)
+    draw_lanes(img, process_left_lane, process_right_lane, 2, process_left_lane_color, process_right_lane_color, -1)
+    # Draws the speed and steering value of the car
+    draw_speed(img, speed, primary)
+    draw_steering(img, steering, primary)
+
+
 def draw_lanes(img, left_lane, right_lane, radius, left_lane_color, right_lane_color, line_thickness):
     """
         Draws lane markings on the given image.
@@ -104,23 +156,7 @@ def draw_search_area(img, lane_recognition):
     """
 
 
-def draw_movement_params(img, vehicle_speed, steering_angle):
-    """
-        Draws visual indicators for vehicle speed and steering angle on the given image.
-
-        Parameters:
-        - img: ndarray
-            The image on which to draw the indicators.
-        - vehicle_speed: int
-            The speed of the vehicle (0-100).
-        - steering_angle: int
-            The steering angle (0-100, 50=neutral).
-    """
-    draw_speed(img, vehicle_speed)
-    draw_steering(img, steering_angle)
-
-
-def draw_speed(img, vehicle_speed):
+def draw_speed(img, vehicle_speed, primary):
     """
     Draws a vertical red line on the given image to represent speed.
     The line is drawn on the left side of the image and its length is
@@ -133,18 +169,22 @@ def draw_speed(img, vehicle_speed):
     line_base_y = HEIGHT - 20
     max_line_length = (HEIGHT - 40)
     max_line_end_y = line_base_y - max_line_length
-    x_position = 10
-
+    if primary:
+        x_position = 10
+        color = (0, 0, 255)
+    else:
+        x_position = 20
+        color = (127, 127, 255)
     # Draws background line to indicate the full speed range
     cv2.line(img, (x_position, line_base_y), (x_position, max_line_end_y), (50, 50, 50), 3)
 
     # Draws the line to represent the calculated speed
     line_length = int(max_line_length * (vehicle_speed / 100))
     line_end_y = line_base_y - line_length
-    cv2.line(img, (x_position, line_base_y), (x_position, line_end_y), (0, 0, 255), 1)
+    cv2.line(img, (x_position, line_base_y), (x_position, line_end_y), color, 1)
 
 
-def draw_steering(img, steering_angle):
+def draw_steering(img, steering_angle, primary):
     """
     Draws a horizontal red line on the given image to represent steering angle.
     The line is drawn on the bottom of the image with the start position in the horizontal middle.
@@ -155,15 +195,20 @@ def draw_steering(img, steering_angle):
     - steering_angle: int (0-100, 50=neutral)
     """
     if steering_angle < 0:
-        print(steering_angle)
         steering_angle = 0
     if steering_angle > 100:
-        print(steering_angle)
         steering_angle = 50
+
     line_base_x = 20
     max_line_length = (WIDTH - 40) // 2
     max_line_end_x = line_base_x + max_line_length * 2
-    y_position = HEIGHT - 20
+
+    if primary:
+        y_position = HEIGHT - 10
+        color = (0, 0, 255)
+    else:
+        y_position = HEIGHT - 20
+        color = (127, 127, 255)
 
     # Draws background line to indicate the full steering range
     cv2.line(img, (line_base_x, y_position), (max_line_end_x, y_position), (50, 50, 50), 3)
@@ -172,8 +217,7 @@ def draw_steering(img, steering_angle):
     line_length = int(max_line_length * (steering_angle - 50) / 100)
     line_length = line_length * 2
     line_end_x = line_start_x + line_length
-
-    cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), (0, 0, 255), 1)
+    cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), color, 1)
 
 # endregion
 
@@ -297,7 +341,6 @@ def save_analysis_to_file(all_frame_data):
 
     Parameters:
         all_frame_data (list of dict): List of dictionaries containing data for all frames.
-        output_path (str): Path to save the compressed JSON file.
     """
     try:
         # Use the given data directly and save it in one go
@@ -312,9 +355,6 @@ def save_analysis_to_file(all_frame_data):
 def load_analysis_from_file():
     """
     Load analyzed data from a JSON file.
-
-    Parameters:
-        input_path (str): Path to the JSON file.
 
     Returns:
         list of dict: List of dictionaries containing frame data.
@@ -479,29 +519,13 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     else:
         LAST_RIGHT_LANE = right_lane
     """
+
     speed, steering = movement_params.get_movement_params(process_left_lane, process_right_lane)
 
-    # region Draws the debug visualizations
-    # Draws the searchable area of the algorithm
-    draw_search_area(img, main_lane_recognition) # NOT Implemented yet
-
-    # Draws the ignore zone (zone where the car is visible
-    draw_ignore_zone(img)
-
-    # Draws the found lane markings
-    draw_lanes(img, left_lane, right_lane, 5, (255, 0, 0), (0, 255, 0), 1)
-    if secondary_lane_recognition:
-        draw_lanes(img, sec_left_lane, sec_right_lane, 5, (200, 0, 200), (0, 200, 200), 1)
-    draw_lanes(img, process_left_lane, process_right_lane, 2, (100, 0, 255), (0, 100, 255), -1)
-
-    # Draws the speed and steering value of the car
-    draw_speed(img, speed)
-    draw_steering(img, steering)
-
-    # endregion
+    draw_debug_visuals(img, True, left_lane, main_lane_recognition, process_left_lane, process_right_lane, right_lane,
+                       sec_left_lane, sec_right_lane, secondary_lane_recognition, speed, steering)
 
     # region json handling
-
     # Saves the current values to a json file
     json_data = convert_values_to_json(frame_count,
                                        left_lane, right_lane,
@@ -510,10 +534,36 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
 
     # Draws the data of the given json file (json_compare_frame_data) on the screen
 
-    # Will be implemented in the future
+    if not json_compare_frame_data:
+        return
+
+    (json_left_lane, json_right_lane,
+     json_sec_left_lane, json_sec_right_lane,
+     json_speed, json_steering) = json_compare_frame_data
+
+    if json_left_lane and json_right_lane:
+        json_has_secondary = True
+    else:
+        json_has_secondary = False
+
+    json_process_left_lane = left_lane
+    json_process_right_lane = right_lane
+
+    if json_has_secondary:
+        # Use secondary algorithm if a lane is empty
+        if not json_left_lane or not json_right_lane:
+            if len(json_sec_left_lane) > len(json_left_lane):
+                json_process_left_lane = json_sec_left_lane
+            if len(json_sec_right_lane) > len(json_right_lane):
+                json_process_right_lane = json_sec_right_lane
+
+    draw_debug_visuals(img, False, json_left_lane, None, json_process_left_lane,
+                       json_process_right_lane, json_right_lane, json_sec_left_lane, json_sec_right_lane,
+                       json_has_secondary, json_speed, json_steering)
 
     return json_data
     # endregion
+
 # endregion
 
 
@@ -548,7 +598,7 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "BaseInitiatedContrastFinder"
+    main_lane_recognition_name = "CenterLaneFinder"
     secondary_lane_recognition_name = "None"
     movement_params_name = "CenterDeviationDriver"
 
@@ -567,15 +617,15 @@ def start():
     - The file extension must be ".mp4"
     - You must include the file extension
     """
-    input_path = "/home/robin/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.2.x" # Specific to user
-    video_name = "CLIP-v0.2.5-LR1-SLR-1-MP0_Drives_8_successfully" + ".mp4" # Enter the name of the video file here
+    input_path = "/home/robmroi/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.2.x" # Specific to user
+    video_name = "CLIP-v0.2.1-LR1-SLR-1-MP0_Drives_of_Track_x1" + ".mp4" # Enter the name of the video file here
 
-    json_input = "" + ".json" # Enter the name of the json file with which you want to compare
+    json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
 
     base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
-    json_input_path = os.path.join(input_path, json_input)
+    json_input_path = os.path.join(input_path, "Processed", json_input)
     json_output_path = output_video.replace(".avi", ".json")
 
     # Setup lane recognition and movement calculation algorithms
