@@ -453,6 +453,49 @@ LAST_LEFT_COUNT = 0
 LAST_RIGHT_COUNT = 0
 
 
+def update_lane_data_left(left_lane, sec_left_lane):
+    """
+    Compares the y- values in left_lane and sec_left_lane, if there is the same y- value in both Lists
+    it builds the average of both x- values belonging to the same y- value and saves it in left_lane.
+    If there is y- value in sec_left_lane that is not in left_lane, the to the y- value belonging tuple
+    will be added in left_lane.
+    """
+    # A dictionary from left lane with y beeing the Key- value und and x the to the Key- value belonging value.
+    left_lane_dict = {y: x for y, x in left_lane}
+
+    for y, x in sec_left_lane:
+        if y in left_lane_dict:
+            # Calculates the average if there is the same y- value in both lists and adds it to the dictionary
+            left_lane_dict[y] = (left_lane_dict[y] + x) // 2
+        else:
+            # Adds a new tuple to the dictionary if there is a y- value ONLY existing in sec_left_lane
+            left_lane_dict[y] = x
+
+    # converts the dictionary into a list.
+    updated_left_lane = sorted(left_lane_dict.items())
+    return updated_left_lane
+
+
+def update_lane_data_right(right_lane, sec_right_lane):
+    """
+    The same as above, just with the right lane.
+    """
+    # A dictionary from left lane with y beeing the Key- value und and x the to the Key- value belonging value.
+    right_lane_dict = {y: x for y, x in right_lane}
+
+    for y, x in sec_right_lane:
+        if y in right_lane_dict:
+            # Calculates the average if there is the same y- value in both lists and adds it to the dictionary
+            right_lane_dict[y] = (right_lane_dict[y] + x) // 2
+        else:
+            # Adds a new tuple to the dictionary if there is a y- value ONLY existing in sec_right_lane
+            right_lane_dict[y] = x
+
+    # converts the dictionary into a list.
+    updated_right_lane = sorted(right_lane_dict.items())
+    return updated_right_lane
+
+
 def process_frame(img, main_lane_recognition, secondary_lane_recognition, movement_params, json_compare_frame_data, frame_count):
     """
     Process a single video frame to recognize and highlight lane lines, and
@@ -486,11 +529,25 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     process_right_lane = right_lane
 
     sec_left_lane, sec_right_lane = None, None
+    left_lane_y = []
+    sec_left_lane_y = []
+    left_average = None
 
     if secondary_lane_recognition:
         sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
-        # Use secondary algorithm if a lane is empty
-        if not left_lane or not right_lane:
+        #Use the algorithm with the longer lane
+        if len(sec_left_lane) > len(left_lane):
+            process_left_lane = sec_left_lane
+
+        if len(sec_right_lane) > len(right_lane):
+            process_right_lane = sec_right_lane
+
+            left_lane = update_lane_data_left(left_lane, sec_left_lane)
+            right_lane = update_lane_data_right(right_lane, sec_right_lane)
+
+        # Use only the secondary algorithm if the main algorithm doesn't recognize enough Elements
+        if len(left_lane) + len(right_lane) < 7:
+        #if not left_lane or not right_lane:
             sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
             if len(sec_left_lane) > len(left_lane):
                 process_left_lane = sec_left_lane
@@ -600,9 +657,9 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "BaseInitiatedContrastFinder"
-    secondary_lane_recognition_name = "BaseInitiatedDarknessFinder"
-    movement_params_name = "CenterLaneDeviationDriver"
+    main_lane_recognition_name = "BaseInitiatedDarknessFinder"
+    secondary_lane_recognition_name = "BaseInitiatedContrastFinder"
+    movement_params_name = "CenterDeviationDriver"
 
     version = "0.2.12"
     """
@@ -619,10 +676,10 @@ def start():
     - The file extension must be ".mp4"
     - You must include the file extension
     """
-    input_path = "/home/robmroi/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.2.x" # Specific to user
-    video_name = "CLIP-v0.2.10-LR1-SLR-1-MP0_Drives_of_Track_x3" + ".mp4" # Enter the name of the video file here
+    input_path = "C://Users//michi//Desktop//Auto//" # Specific to user
+    video_name = "CLIP-v0.2.6-LR1-SLR-1-MP0_Drives_of_Track_x1" + ".mp4" # Enter the name of the video file here
 
-    json_input = "CLIP-v0.2.10-LR1-SLR-1-MP0_Drives_of_Track_x3 - Processed with v0.2.12-LR1-SLR-1-MP0" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
+    json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
 
     # region setup
     base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
