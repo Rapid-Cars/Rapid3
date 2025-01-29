@@ -30,7 +30,7 @@ SLAVE_ADDRESS = 0x12  # Address of Teensy
 clock = time.clock()
 
 lane_recognition_name = 'CenterLaneFinder'
-secondary_lane_recognition_name = 'None'
+secondary_lane_recognition_name = 'BaseInitiatedFinder'
 movement_params_name = 'CenterDeviationDriver'
 version = "0.2.10"
 
@@ -293,6 +293,32 @@ LAST_RIGHT_LANE = []
 LAST_LEFT_COUNT = 0
 LAST_RIGHT_COUNT = 0
 
+def update_lane_data(lane, sec_lane):
+    """
+    Compares the y-values in lane and sec_lane, if there is the same y-value in both Lists
+    If both lanes have the same y-value it calculates the average of both x-values.
+    If only one lane has a specific y-value it uses the corresponding x-value.
+    Afterward it returns the sorted and updated lane data.
+
+    Parameters:
+        lane (tuple): The lane of the first algorithm
+        sec_lane (tuple): The second lane
+    """
+    # A dictionary from left lane with y being the Key-value und and x the to the Key-value belonging value.
+    lane_dict = {y: x for y, x in lane}
+
+    for y, x in sec_lane:
+        if y in lane_dict:
+            # Calculates the average if there is the same y-value in both lists and adds it to the dictionary
+            lane_dict[y] = (lane_dict[y] + x) // 2
+        else:
+            # Adds a new element to the dictionary if there is a y-value ONLY existing in sec_lane
+            lane_dict[y] = x
+
+    # converts the dictionary into a list.
+    updated_lane = sorted(lane_dict.items())
+    return updated_lane
+
 def main_loop(_wifi_client = None):
     """
     Main loop for processing image frames and performing lane detection, controlling movement parameters,
@@ -311,13 +337,13 @@ def main_loop(_wifi_client = None):
     img = sensor.snapshot()  # Capture an image
 
     left_lane, right_lane = lane_recognition.recognize_lanes(img)
+
     if secondary_lane_recognition:
-        if not left_lane or not right_lane:
+        # Use the secondary algorithm only if the main algorithm doesn't recognize enough Elements
+        if len(left_lane) + len(right_lane) < 7:
             sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
-            if len(sec_left_lane) > len(left_lane):
-                left_lane = sec_left_lane
-            if len(sec_right_lane) > len(right_lane):
-                left_lane = sec_right_lane
+            left_lane = update_lane_data(left_lane, sec_left_lane)
+            right_lane = update_lane_data(right_lane, sec_right_lane)
 
     """
     if not left_lane:
