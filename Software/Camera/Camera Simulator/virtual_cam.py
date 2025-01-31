@@ -506,6 +506,8 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     process_left_lane = left_lane
     process_right_lane = right_lane
 
+    sec_left_lane, sec_right_lane = None, None
+
     if secondary_lane_recognition:
         sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray) # ONLY in virtual_cam!
         # Use only the secondary algorithm if the main algorithm doesn't recognize enough Elements
@@ -612,8 +614,8 @@ def start():
     - The file extension must be ".mp4"
     - You must include the file extension
     """
-    input_path = "C://Users//michi//Desktop//Auto//" # Specific to user
-    video_name = "CLIP-v0.2.6-LR1-SLR-1-MP0_Drives_of_Track_x1" + ".mp4" # Enter the name of the video file here
+    input_path = "/home/robin/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.3.x/" # Specific to user
+    video_name = "CLIP-v0.3.0-LR1-SLR1-MP0_00004" + ".mp4" # Enter the name of the video file here
 
     json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
 
