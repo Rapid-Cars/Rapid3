@@ -13,6 +13,12 @@ from libraries.movement_params import *
 # noinspection PyUnresolvedReferences
 from machine import LED
 
+lane_recognition_name = 'CenterLaneFinder'
+secondary_lane_recognition_name = 'None'
+movement_params_name = 'CenterLaneDeviationDriver'
+version = "0.3.0"
+
+
 # region Initialize I2C
 
 # Pinout:
@@ -22,14 +28,6 @@ i2c = machine.I2C(1, freq=100000)
 SLAVE_ADDRESS = 0x12  # Address of Teensy
 
 # endregion
-
-# noinspection PyUnresolvedReferences
-clock = time.clock()
-
-lane_recognition_name = 'CenterLaneFinder'
-secondary_lane_recognition_name = 'None'
-movement_params_name = 'CenterLaneDeviationDriver'
-version = "0.3.0"
 
 # region Set up the lane_recognition and movement_params which should be used
 
@@ -55,6 +53,8 @@ CLIP_DURATION = 15              # Clip duration in seconds
 CLIP_FOLDER = "/sdcard/clips"   # Folder for saving clips
 FILENAME, VIDEO, START_TIME = None, None, None
 led = LED("LED_BLUE")
+LED_STATE = True  # True for blue LED, False for green (off LED)
+
 
 def get_next_clip_index():
     """
@@ -96,10 +96,6 @@ def generate_base_name(lane_algorithm_name, secondary_lane_algorithm_name, movem
 
     # Generate the base name
     return f"CLIP-v{version}-LR{lane_recognition_id}-SLR{secondary_lane_recognition_id}-MP{movement_algorithm_id}"
-
-
-base_name = generate_base_name(lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
-LED_STATE = True  # True for blue LED, False for green (off LED)
 
 
 def save_frame_to_file(frame):
@@ -148,46 +144,6 @@ def save_frame_to_file(frame):
 
 # endregion
 
-# region Debug visuals
-
-def draw_arrow(canvas, vehicle_speed, steering_angle):
-    """
-    Draws an arrow on a canvas to represent vehicle speed and steering angle. The arrow's
-    length corresponds to the vehicle's speed, while its direction is adjusted according
-    to the steering angle. The arrow length is scaled proportionally to a defined maximum.
-
-    Parameters:
-        canvas: A drawing surface where the arrow will be drawn. It must have methods
-                to retrieve width and height, and a method `draw_arrow` to render the
-                arrow.
-        vehicle_speed: A numeric value representing the vehicle's speed as a percentage
-                       of maximum speed.
-        steering_angle: A numeric value indicating the steering angle, where 0 is 45°
-                        to the left, 50 is vertical, and 100 is 45° to the right.
-    """
-    img_width = canvas.width()
-    img_height = canvas.height()
-
-    base_x = img_width // 2  # Center of the image horizontally
-    base_y = img_height - 10  # Bottom of the image
-
-    # Calculate arrow length and direction
-    max_length = 200  # Maximum arrow length
-    arrow_length = int((vehicle_speed / 100) * max_length)
-
-    # Steering angle (0 = 45° left, 50 = vertical, 100 = 45° right)
-    angle_offset = (steering_angle - 50) * 0.45  # Map to degrees
-    angle_radians = angle_offset * (3.14159 / 180)  # Convert to radians
-
-    # Calculate arrow tip coordinates
-    tip_x = int(base_x + arrow_length * -angle_radians)  # Horizontal deviation
-    tip_y = int(base_y - arrow_length)  # Vertical length
-
-    # Draw the arrow on the image
-    canvas.draw_arrow(base_x, base_y, tip_x, tip_y, color=100, thickness=4)
-
-# endregion
-
 # region Setup
 
 def setup_camera():
@@ -218,17 +174,17 @@ def setup_camera():
     sensor.set_auto_exposure(False, exposure_us=15000)  # Set exposure to 15000 µs (adjust as needed)
     sensor.skip_frames(time=2000)  # Time to stabilize the camera
 
-setup_camera()
+# noinspection PyUnresolvedReferences
+clock = time.clock()
+
+base_name = generate_base_name(lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
 CLIP_INDEX = get_next_clip_index()
+
+setup_camera()
 
 # endregion
 
 # region Main loop
-
-LAST_LEFT_LANE = []
-LAST_RIGHT_LANE = []
-LAST_LEFT_COUNT = 0
-LAST_RIGHT_COUNT = 0
 
 def update_lane_data(lane, sec_lane):
     """
@@ -256,16 +212,12 @@ def update_lane_data(lane, sec_lane):
     updated_lane = sorted(lane_dict.items())
     return updated_lane
 
-def main_loop(_wifi_client = None):
+def main_loop():
     """
     Main loop for processing image frames and performing lane detection, controlling movement parameters,
     saving video, drawing directional arrows, communicating with external hardware via I2C, and optionally
     streaming video over Wi-Fi. This function integrates multiple components for autonomous driving
     functionality.
-
-    Parameters:
-        _wifi_client: Optional. A Wi-Fi client object used to stream video data over a
-                      network if enabled. Defaults to None.
 
     Raises:
         OSError: Raised during I2C communication errors with the external hardware.
@@ -282,33 +234,6 @@ def main_loop(_wifi_client = None):
             left_lane = update_lane_data(left_lane, sec_left_lane)
             right_lane = update_lane_data(right_lane, sec_right_lane)
 
-    """
-    if not left_lane:
-        global LAST_LEFT_LANE
-        left_lane = LAST_LEFT_LANE
-        global LAST_LEFT_COUNT
-        LAST_LEFT_COUNT += 1
-        if LAST_LEFT_COUNT > 3:
-            LAST_LEFT_COUNT = 0
-            LAST_LEFT_LANE = []
-    else:
-        LAST_LEFT_LANE = left_lane
-        global LAST_LEFT_COUNT
-        LAST_LEFT_COUNT = 0
-
-    if not right_lane:
-        global LAST_RIGHT_LANE
-        right_lane = LAST_RIGHT_LANE
-        global LAST_RIGHT_COUNT
-        LAST_RIGHT_COUNT += 1
-        if LAST_RIGHT_COUNT > 3:
-            LAST_RIGHT_COUNT = 0
-            LAST_RIGHT_LANE = []
-    else:
-        LAST_RIGHT_LANE = right_lane
-        global LAST_RIGHT_COUNT
-        LAST_RIGHT_COUNT = 0
-    """
     # Process video
     speed, steering = movement_params.get_movement_params(left_lane, right_lane)
 
@@ -317,9 +242,6 @@ def main_loop(_wifi_client = None):
 
     # Save video to sd card
     save_frame_to_file(img)
-
-    # Draw the arrow representing speed and steering
-    # draw_arrow(img, speed, steering)
 
     # Send data via I2C to the Teensy ------------------------------------------
     try:

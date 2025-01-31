@@ -447,12 +447,6 @@ def load_video(main_lane_recognition, secondary_lane_recognition, movement_param
     cv2.destroyAllWindows()
 
 
-LAST_LEFT_LANE = []
-LAST_RIGHT_LANE = []
-LAST_LEFT_COUNT = 0
-LAST_RIGHT_COUNT = 0
-
-
 def update_lane_data(lane, sec_lane):
     """
     Compares the y-values in lane and sec_lane, if there is the same y-value in both Lists
@@ -520,30 +514,6 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
             process_left_lane = update_lane_data(left_lane, sec_left_lane)
             process_right_lane = update_lane_data(right_lane, sec_right_lane)
 
-    """
-    # If a lane is still empty the last recorded lane will be used instead
-    if not left_lane:
-        global LAST_LEFT_LANE
-        left_lane = LAST_LEFT_LANE
-        global LAST_LEFT_COUNT
-        LAST_LEFT_COUNT += 1
-        if LAST_LEFT_COUNT > 3:
-            LAST_LEFT_COUNT = 0
-            LAST_LEFT_LANE = []
-    else:
-        LAST_LEFT_LANE = left_lane
-
-    if not right_lane:
-        global LAST_RIGHT_LANE
-        right_lane = LAST_RIGHT_LANE
-        global LAST_RIGHT_COUNT
-        LAST_RIGHT_COUNT += 1
-        if LAST_RIGHT_COUNT > 3:
-            LAST_RIGHT_COUNT = 0
-            LAST_RIGHT_LANE = []
-    else:
-        LAST_RIGHT_LANE = right_lane
-    """
 
     speed, steering = movement_params.get_movement_params(process_left_lane, process_right_lane)
 
@@ -623,8 +593,8 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "BaseInitiatedDarknessFinder"
-    secondary_lane_recognition_name = "BaseInitiatedContrastFinder"
+    main_lane_recognition_name = "CenterLaneFinder"
+    secondary_lane_recognition_name = "None"
     movement_params_name = "CenterDeviationDriver"
 
     version = "0.3.0"
