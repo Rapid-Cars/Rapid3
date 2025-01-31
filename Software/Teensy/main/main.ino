@@ -2,9 +2,6 @@
 // The library Servo.h provides the functions for the motor and servo
 #include "Servo.h"
 #include <Wire.h>
-#include "SPISlave_T4.h"
-#include <algorithm> // For std::max and std::min
-using namespace std;
 
 //Constants for this project
 //Motor / ESC
@@ -16,31 +13,79 @@ Servo esc;
 int servoPin; // The pin where the steering servo is attached
 Servo steeringServo;
 
-uint32_t spiRx[10];
-volatile int spiRxIdx;
-volatile int spiRxComplete = 0;
-
-
-SPISlave_T4<&SPI, SPI_8_BITS> mySPI;
+// Buffer for received Data
+#define BUFFER_SIZE 32
+char buffer[BUFFER_SIZE];
 
 int speed = 0;   // Speed of the motor
 int angle = 0;   // Steering angle of the servo
-int receiveCount = 0;
+int count = 0;
 int speeds[5];
 int angles[5];
 
 unsigned long lastReceiveTime = 0; // Tracks the last time data was received
 const unsigned long timeout = 200; // 200 millisecond timeout
 
+void setup() {
+  // Init esc
+  escPin = 29; //CHANGE BEFORE USE
+  escMaxSpeed = 0.08;
+  esc.attach(escPin, 1000, 2000);
+
+  // Init servo
+  servoPin = 28; //CHANGE BEFORE USE
+  steeringServo.attach(servoPin);
+
+  // Init I2C
+  Wire.begin(0x12); // Teensy as Slave with adress 0x12
+  Wire.onReceive(receiveEvent); // Callback for received data
+  /*
+  Pinout:
+  P19: SCL
+  18: SDA
+  */
+  Serial.begin(115200);         // Debug-Output
+  Serial.println("Starting: \n");
+  setESCSpeed(20);
+  delay(100);
+  setESCSpeed(0);
+  delay(1000);
+  setSteeringAngle(50);
+}
+
+void loop() {
+  // Check for timeout
+  if (millis() - lastReceiveTime > timeout) {
+    Serial.println("Timeout: No data received for 200  milliseconds. Stopping car.");
+    setESCSpeed(0); // Stop the car
+    setSteeringAngle(50); // Set steering to neutral
+    delay(2000);
+    //exit(0); // Exit the program
+  } else {
+    // Process data from the camera
+    processCameraData(speed, angle);
+    delay(10);
+  }
+
+
+  
+
+  // For testing
+  //driveTestCircle();
+  //testESC();
+  //testSteering();
+  //exit(0);
+}
+
 // Processes the motor speed and steering angle.
 // Uses the last five values for each to build an average value.
 // The average value will then be sent to proper functions.
 void processCameraData(int speed, int angle) {
-  speeds[receiveCount] = speed;
-  angles[receiveCount] = angle;
-  receiveCount = receiveCount + 1;
-  if (receiveCount > 4) {
-    receiveCount = 0;
+  speeds[count] = speed;
+  angles[count] = angle;
+  count = count + 1;
+  if (count > 4) {
+    count = 0;
     int averageSpeed = 0;
     int averageAngle = 0;
     for (int i = 0; i < 5; i++) {
@@ -76,6 +121,26 @@ void setSteeringAngle(int angle) {
   angle = 100 - angle; // In Documentation 0 is full left and 100 is full right
   angle = map(angle, 0, 100, 50, 140); // Maps the values to the maximum angle the vehicle can achieve
   steeringServo.write(angle);
+}
+
+// Callback: receive data from Master (cam)
+void receiveEvent(int numBytes) {
+  int i = 0;
+  while (Wire.available() && i < BUFFER_SIZE - 1) {
+    buffer[i++] = Wire.read();
+  }
+  buffer[i] = '\0'; // Terminate string
+
+  // Process CSV Input
+  sscanf(buffer, "%d,%d", &speed, &angle);
+
+  lastReceiveTime = millis();
+
+  // Output received Data
+  Serial.print("Empfangen - Speed: ");
+  Serial.print(speed);
+  Serial.print(", Steering angle: ");
+  Serial.println(angle);
 }
 
 void driveTestCircle() {
@@ -162,66 +227,4 @@ void testSteering() {
   setSteeringAngle(50);
   Serial.println(50);
   delay (9000);
-}
-
-
-void setup() {
-  // Init esc
-  escPin = 29; //CHANGE BEFORE USE
-  escMaxSpeed = 0.15;
-  esc.attach(escPin, 1000, 2000);
-
-  // Init servo
-  servoPin = 28; //CHANGE BEFORE USE
-  steeringServo.attach(servoPin);
-
-  // Init SPI
-  mySPI.begin();
-  mySPI.swapPins(true);
-
-  Serial.begin(115200);         // Debug-Output
-  Serial.println("Starting: \n");
-  setESCSpeed(20);
-  delay(100);
-  setESCSpeed(0);
-  delay(1000);
-  setSteeringAngle(50);
-}
-
-void loop() {
-  // Receive data from SPI
-  if (spiRxComplete) {
-    lastReceiveTime = millis();
-    //Serial.println(spiRxIdx);
-    for (int i = 0; i < spiRxIdx; i++) {
-      //Serial.print(spiRx[i]); Serial.print(" ");
-      speed = spiRx[0];
-      angle = spiRx[1];
-    }
-  }
-  Serial.print("Received: Speed: ");
-  Serial.print(speed);
-  Serial.print(" - Steering: ");
-  Serial.println(angle);
-  spiRxComplete = 0;
-  spiRxIdx = 0;
-
-  // Check for timeout
-  if (millis() - lastReceiveTime > timeout) {
-    Serial.println("Timeout: No data received for 5 seconds. Stopping car.");
-    setESCSpeed(0); // Stop the car
-    setSteeringAngle(50); // Set steering to neutral
-    delay(2000);
-    //exit(0); // Exit the program
-  } else {
-    // Process data from the camera
-    processCameraData(speed, angle);
-    delay(10);
-  }
-
-  // For testing
-  //driveTestCircle();
-  //testESC();
-  //testSteering();
-  //exit(0);
 }
