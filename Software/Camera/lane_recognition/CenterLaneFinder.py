@@ -2,7 +2,7 @@
 
 CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
-THRESHOLD = 50 # Darkness Threshold, can be a constant but can also change dynamically
+THRESHOLD = 55 # Darkness Threshold, can be a constant but can also change dynamically
 DIRECTION_CHANGE_THRESHOLD = 40 # How far the border can move in a direction to still count as the other lane
 PAST_DIRECTION_CHANGE_SAVING = 10 # For how long past lanes should be saved
 COUNT_PAST_DIRECTION_CHANGE = 0
@@ -75,21 +75,59 @@ class CenterLaneFinder:
         if not self.pixel_getter:
             raise ValueError("Pixel getter has not been set up. Call setup() first.")
 
+        self.set_threshold(img)
         # You can implement another lane recognition algorithm here
         # Get a pixel from the image by using: pixel = self.pixel_getter.get_pixel(img, x, y)
         left_lane, right_lane = [], []
         y = HEIGHT //2 #- (HEIGHT // 3) * 2
         mid_x = WIDTH // 2
-        left = self.find_edge(img, y, 10, mid_x)
-        if left is not None:
-            left_lane.append(left)
-        right = self.find_edge(img, y, WIDTH-10, mid_x)
-        if right is not None:
-            right_lane.append(right)
+        while not left_lane and not right_lane:
+            left = self.find_edge(img, y, 10, mid_x)
+            if left is not None:
+                left_lane.append(left)
+            right = self.find_edge(img, y, WIDTH - 10, mid_x)
+            if right is not None:
+                right_lane.append(right)
+            global THRESHOLD
+            print(THRESHOLD)
+            THRESHOLD = int(THRESHOLD * 1.2)
+            if THRESHOLD > 200:
+                break
 
         left_lane, right_lane = self.check_for_direction_change(left_lane, right_lane)
 
         return left_lane, right_lane
+
+    def set_threshold(self, img):
+        """
+        Calculate the average brightness of an image and set a threshold for lane detection.
+
+        This function analyzes the pixel brightness across the image, excluding specified ignore zones,
+        to compute the average brightness. The computed value is used as a threshold for lane detection,
+        ensuring the process adapts to varying lighting conditions.
+
+        Parameters
+        ----------
+        img : ndarray
+            The input image from which the brightness threshold is calculated.
+
+        Returns
+        -------
+        int
+            The calculated brightness threshold, scaled down to ensure it is suitable for lane detection.
+        """
+        total_normalized_brightness = 0.0  # Sum of normalized brightness values
+        valid_pixel_count = 0  # Count of valid pixels
+        lowest_brightness = 255
+        for x in range(32, WIDTH - 32, 10):
+            # Get pixel brightness (assumed 8-bit value)
+            brightness = self.pixel_getter.get_pixel(img, x, (HEIGHT // 2))
+            if brightness < lowest_brightness:
+                lowest_brightness = brightness
+
+        global THRESHOLD
+        THRESHOLD = int(lowest_brightness * 1.5)
+        print(THRESHOLD)
 
     def check_for_direction_change(self, left_lane, right_lane):
         """

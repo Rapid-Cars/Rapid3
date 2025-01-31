@@ -15,22 +15,14 @@ from libraries.lane_recognition import *
 from libraries.movement_params import *
 # noinspection PyUnresolvedReferences
 from machine import LED
-# noinspection PyUnresolvedReferences
-from machine import SPI, Pin
 
-# region Initialize SPI
+# region Initialize I2C
 
-spi = SPI(1,                        #the  bus which is chosen, openmv only has 1, so 0
-          baudrate=115200,          # 115.2kHz clock
-          polarity=0,               # CPOL = 0 (Clock idle low)
-          phase=0,                  # CPHA = 0 (Data on rising edge)
-          #sck=Pin(2),              # SCK on GPIO2
-          #mosi=Pin(0),             # MOSI on GPIO0
-          #miso=Pin(1),             # MISO on GPIO1
-          #firstbit=SPI.MSB         # MSB-first transmission
-          )
-# Chip-select pin
-cs = Pin("P3", mode=Pin.OUT, value=1)  # CS starts inactive (HIGH)
+# Pinout:
+# P4: SCL
+# P5: SDA
+i2c = machine.I2C(1, freq=100000)
+SLAVE_ADDRESS = 0x12  # Address of Teensy
 
 # endregion
 
@@ -40,7 +32,7 @@ clock = time.clock()
 lane_recognition_name = 'CenterLaneFinder'
 secondary_lane_recognition_name = 'None'
 movement_params_name = 'CenterLaneDeviationDriver'
-version = "0.2.18"
+version = "0.3.0"
 
 # region Set up the lane_recognition and movement_params which should be used
 
@@ -394,14 +386,15 @@ def main_loop(_wifi_client = None):
     # Draw the arrow representing speed and steering
     # draw_arrow(img, speed, steering)
 
-    # Send data via SPI to the Teensy ------------------------------------------
+    # Send data via I2C to the Teensy ------------------------------------------
     try:
-        cs(0)  # Select the SPI slave (CS LOW)
-        spi.write(bytes([speed]))  # Send speed (50)
-        spi.write(bytes([steering]))  # Send steering (40)
-        print("Send speed: ", speed, " and steering: ", steering)
-    finally:
-        cs(1)
+        # Format Data as CSV
+        formatted_message = f"{send_speed},{send_steering}"
+        i2c.writeto(SLAVE_ADDRESS, formatted_message.encode('utf-8'))  # Send
+        print("Sent - Speed: ", send_speed, ", Steering: ", send_steering)
+    except OSError as exception:
+        pass
+        print("I2C Error:", exception)
 
     # Stream video over Wi-Fi
     # Use 192.168.4.1:8080 to connect

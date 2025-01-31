@@ -627,7 +627,7 @@ def start():
     secondary_lane_recognition_name = "BaseInitiatedContrastFinder"
     movement_params_name = "CenterDeviationDriver"
 
-    version = "0.2.12"
+    version = "0.3.0"
     """
     Note for input_path:
     - The input path is specific to each user
