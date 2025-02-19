@@ -595,8 +595,8 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "CenterLaneFinder"
-    secondary_lane_recognition_name = "None"
+    main_lane_recognition_name = "BaseInitiatedContrastFinder"
+    secondary_lane_recognition_name = "BaseInitiatedDarknessFinder"
     movement_params_name = "CenterDeviationDriver"
 
     version = "0.3.0"
