@@ -50,18 +50,23 @@ movement_params = get_movement_params_instance(movement_params_name)
 # region File saving
 
 CLIP_DURATION = 15              # Clip duration in seconds
-CLIP_FOLDER = "/sdcard/clips"   # Folder for saving clips
-FILENAME, VIDEO, START_TIME = None, None, None
+BASE_CLIP_FOLDER = "/sdcard/clips"   # Folder for saving clips
+CURRENT_CLIP_FOLDER, FILENAME = None, None
+VIDEO, START_TIME = None, None
 led = LED("LED_BLUE")
 LED_STATE = True  # True for blue LED, False for green (off LED)
+CLIP_INDEX = 0
+FOLDER_INDEX = 0
 
+def create_new_clip_folder():
+    files = os.listdir(BASE_CLIP_FOLDER)
+    global FOLDER_INDEX
+    FOLDER_INDEX = len(files)
 
-def get_next_clip_index():
-    """
-    Returns the index of the next video clip based on how many files there are in the directory
-    """
-    files = os.listdir(CLIP_FOLDER)
-    return len(files)
+    global CURRENT_CLIP_FOLDER, BASE_NAME
+    CURRENT_CLIP_FOLDER = "{}/{}_{:03d}".format(BASE_CLIP_FOLDER, BASE_NAME, FOLDER_INDEX)
+    os.mkdir(CURRENT_CLIP_FOLDER)
+    print("Created new clip folder: {}".format(CURRENT_CLIP_FOLDER))
 
 
 def generate_base_name(lane_algorithm_name, secondary_lane_algorithm_name, movement_algorithm_name):
@@ -116,8 +121,7 @@ def save_frame_to_file(frame):
     global FILENAME, VIDEO, START_TIME
     if FILENAME is None:
         global CLIP_INDEX
-        FILENAME = "{}/{}_{:05d}.mjpeg".format(CLIP_FOLDER, base_name, CLIP_INDEX)
-        CLIP_INDEX += 1
+        FILENAME = "{}/clip{:03d}.mjpeg".format(CURRENT_CLIP_FOLDER, CLIP_INDEX)
         VIDEO = mjpeg.Mjpeg(FILENAME)
         START_TIME = time.ticks_ms()
         global LED_STATE
@@ -130,6 +134,7 @@ def save_frame_to_file(frame):
             LED("LED_GREEN").on()  # Turn on green LED
 
         LED_STATE = not LED_STATE  # Toggle state for next clip
+        CLIP_INDEX = CLIP_INDEX + 1
         print("Saving clip to:", FILENAME)
 
     try:
@@ -141,6 +146,7 @@ def save_frame_to_file(frame):
             FILENAME = None
     except Exception as exception:
         print("Failed to save clip:", exception)
+
 
 # endregion
 
@@ -169,16 +175,15 @@ def setup_camera():
     sensor.set_pixformat(sensor.GRAYSCALE)  # Grayscale mode
     sensor.set_framesize(sensor.QVGA)  # 320x240 pixels
     sensor.set_contrast(3)
-    sensor.set_auto_gain(True)  # Disable automatic exposure
-    sensor.set_auto_whitebal(True)  # Disable automatic white balance
-    sensor.set_auto_exposure(False, exposure_us=15000)  # Set exposure to 15000 µs (adjust as needed)
+    sensor.set_auto_gain(False)  # Disable automatic exposure
+    # sensor.set_auto_exposure(False, exposure_us=15000)  # Set exposure to 15000 µs (adjust as needed)
     sensor.skip_frames(time=2000)  # Time to stabilize the camera
 
 # noinspection PyUnresolvedReferences
 clock = time.clock()
 
-base_name = generate_base_name(lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
-CLIP_INDEX = get_next_clip_index()
+BASE_NAME = generate_base_name(lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
+create_new_clip_folder()
 
 setup_camera()
 
