@@ -117,9 +117,9 @@ def get_ignore_zone():
         - tuple: (x_min, y_min, x_max, y_max) specifying the ignore zone's rectangle.
     """
     y_min = HEIGHT
-    y_max = HEIGHT - 50 # For position 3
-    x_min = 70
-    x_max = WIDTH - 70
+    y_max = 115
+    x_min = 110
+    x_max = 240
     return x_min, y_min, x_max, y_max
 
 
