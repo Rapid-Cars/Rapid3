@@ -217,6 +217,17 @@ def update_lane_data(lane, sec_lane):
     updated_lane = sorted(lane_dict.items())
     return updated_lane
 
+def reset_i2c_bus():
+    global i2c
+    try:
+        i2c.deinit() # Deactivate I2C
+        i2c = machine.I2C(1, freq=100000)
+        print("Reset I2C bus")
+    except Exception as e:
+        print("Failed to reset I2C bus:", e)
+
+
+
 def main_loop():
     """
     Main loop for processing image frames and performing lane detection, controlling movement parameters,
@@ -255,13 +266,24 @@ def main_loop():
         i2c.writeto(SLAVE_ADDRESS, formatted_message.encode('utf-8'))  # Send
         print("Sent - Speed: ", send_speed, ", Steering: ", send_steering)
     except OSError as exception:
-        pass
+        with open("/sdcard/i2c_log.txt", "a") as f:
+            f.write("I2C Error: " + str(exception) + "\n")
+        reset_i2c_bus()
         print("I2C Error:", exception)
 
     print(clock.fps())
 
+# Watchdog Timer with 1 second timeout
+wdt = machine.WDT(timeout=1000) # 1000 ms
+
 # main loop
 while True:
-    main_loop()
+    try:
+        wdt.feed()
+        main_loop()
+    except Exception as e:
+        with open("/sdcard/log.txt", "a") as f:
+            f.write("Main Loop Crash: " + str(e) + "\n")
+        print("Main Loop Crash:", e)
 
 # endregion
