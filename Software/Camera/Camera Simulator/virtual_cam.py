@@ -5,6 +5,7 @@ import gzip
 
 from Software.Camera.lane_recognition import *
 from Software.Camera.movement_params import *
+from common import *
 
 HEIGHT = 240
 WIDTH = 320
@@ -225,39 +226,6 @@ def draw_steering(img, steering_angle, primary):
 
 # region File name handling ---------------------------------------------------------------
 
-def generate_base_name(version, lane_algorithm_name, secondary_lane_algorithm_name, movement_algorithm_name):
-    """
-        Generates a standardized base name for the video file based on the version
-        and the selected algorithms for lane recognition and movement parameters.
-
-        Parameters:
-        - version: str
-            Version identifier for the processing pipeline.
-        - lane_algorithm_name: str
-            Name of the primary lane recognition algorithm.
-        - secondary_lane_algorithm_name: str
-            Name of the secondary lane recognition algorithm.
-        - movement_algorithm_name: str
-            Name of the movement parameter algorithm.
-
-        Returns:
-        - str: A formatted base name string in the form:
-            "v{version}-LR{lane_recognition_id}-SLR{secondary_lane_recognition_id}-MP{movement_algorithm_id}"
-
-        Raises:
-        - ValueError: If any provided algorithm name is invalid.
-    """
-    lane_recognition_id = get_lane_recognition_id(lane_algorithm_name)
-    secondary_lane_recognition_id = get_lane_recognition_id(secondary_lane_algorithm_name)
-    movement_algorithm_id = get_movement_params_id(movement_algorithm_name)
-
-    if lane_recognition_id == -1 or movement_algorithm_id == -1:
-        raise ValueError("Invalid algorithm name provided.")
-
-    # Generate the base name
-    base_name = f"v{version}-LR{lane_recognition_id}-SLR{secondary_lane_recognition_id}-MP{movement_algorithm_id}"
-    return base_name
-
 
 def set_input_and_output(input_path, video_name, processing_name):
     """
@@ -447,33 +415,6 @@ def load_video(main_lane_recognition, secondary_lane_recognition, movement_param
     cv2.destroyAllWindows()
 
 
-def update_lane_data(lane, sec_lane):
-    """
-    Compares the y-values in lane and sec_lane, if there is the same y-value in both Lists
-    If both lanes have the same y-value it calculates the average of both x-values.
-    If only one lane has a specific y-value it uses the corresponding x-value.
-    Afterward it returns the sorted and updated lane data.
-
-    Parameters:
-        lane (tuple): The lane of the first algorithm
-        sec_lane (tuple): The second lane
-    """
-    # A dictionary from left lane with y being the Key-value und and x the to the Key-value belonging value.
-    lane_dict = {y: x for y, x in lane}
-
-    for y, x in sec_lane:
-        if y in lane_dict:
-            # Calculates the average if there is the same y-value in both lists and adds it to the dictionary
-            lane_dict[y] = (lane_dict[y] + x) // 2
-        else:
-            # Adds a new element to the dictionary if there is a y-value ONLY existing in sec_lane
-            lane_dict[y] = x
-
-    # converts the dictionary into a list.
-    updated_lane = sorted(lane_dict.items())
-    return updated_lane
-
-
 def process_frame(img, main_lane_recognition, secondary_lane_recognition, movement_params, json_compare_frame_data, frame_count):
     """
     Process a single video frame to recognize and highlight lane lines, and
@@ -502,22 +443,9 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Video processing
-    left_lane, right_lane = main_lane_recognition.recognize_lanes(gray)
-    process_left_lane = left_lane
-    process_right_lane = right_lane
 
-    sec_left_lane, sec_right_lane = None, None
-
-    if secondary_lane_recognition:
-        sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray) # ONLY in virtual_cam!
-        # Use only the secondary algorithm if the main algorithm doesn't recognize enough Elements
-        if len(left_lane) + len(right_lane) < 7:
-            sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(gray)
-            process_left_lane = update_lane_data(left_lane, sec_left_lane)
-            process_right_lane = update_lane_data(right_lane, sec_right_lane)
-
-
-    speed, steering = movement_params.get_movement_params(process_left_lane, process_right_lane)
+    speed, steering, left_lane, right_lane, sec_left_lane, sec_right_lane, process_left_lane, process_right_lane \
+        = set_speed_and_steering(gray, main_lane_recognition, secondary_lane_recognition, movement_params, return_lanes=True)
 
     draw_debug_visuals(img, True, left_lane, main_lane_recognition, process_left_lane, process_right_lane, right_lane,
                        sec_left_lane, sec_right_lane, secondary_lane_recognition, speed, steering)
@@ -595,11 +523,10 @@ def start():
         - Ensure the input path and video name are correctly configured for the environment.
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
-    main_lane_recognition_name = "BaseInitiatedContrastFinder"
-    secondary_lane_recognition_name = "BaseInitiatedDarknessFinder"
-    movement_params_name = "CenterDeviationDriver"
+    pixel_getter = get_pixel_getter('virtual_cam')  # Do NOT change
+    main_lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance)
+    movement_params = setup_movement_params(get_movement_params_instance)
 
-    version = "0.3.0"
     """
     Note for input_path:
     - The input path is specific to each user
@@ -614,26 +541,18 @@ def start():
     - The file extension must be ".mp4"
     - You must include the file extension
     """
-    input_path = "/home/robin/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.3.x/" # Specific to user
-    video_name = "CLIP-v0.3.0-LR1-SLR1-MP0_00004" + ".mp4" # Enter the name of the video file here
+    input_path = "/home/robmroi/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.4.x/" # Specific to user
+    video_name = "CLIP-v0.4.10-LR1-SLR-1-MP3_Drives_of_straight_track" + ".mp4" # Enter the name of the video file here
 
     json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
 
     # region setup
-    base_name = generate_base_name(version, main_lane_recognition_name, secondary_lane_recognition_name, movement_params_name)
+    base_name = generate_base_name(get_lane_recognition_id, get_movement_params_instance)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
     json_input_path = os.path.join(input_path, "Processed", json_input)
     json_output_path = output_video.replace(".avi", ".json")
 
-    # Setup lane recognition and movement calculation algorithms
-    pixel_getter = get_pixel_getter('virtual_cam') # Do NOT change
-    main_lane_recognition = get_lane_recognition_instance(main_lane_recognition_name)
-    main_lane_recognition.setup(pixel_getter)
-    secondary_lane_recognition = get_lane_recognition_instance(secondary_lane_recognition_name)
-    if secondary_lane_recognition:
-        secondary_lane_recognition.setup(pixel_getter)
-    movement_params = get_movement_params_instance(movement_params_name)
 
     set_json_path(json_input_path, json_output_path)
     # endregion
