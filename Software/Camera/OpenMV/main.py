@@ -38,7 +38,7 @@ movement_params = setup_movement_params(get_movement_params_instance)
 
 # region File saving
 
-CLIP_DURATION = 15              # Clip duration in seconds
+CLIP_DURATION = 10              # Clip duration in seconds
 BASE_CLIP_FOLDER = "/sdcard/clips"   # Folder for saving clips
 CURRENT_CLIP_FOLDER, FILENAME = None, None
 VIDEO, START_TIME = None, None
@@ -53,8 +53,14 @@ def create_new_clip_folder():
     FOLDER_INDEX = len(files)
 
     global CURRENT_CLIP_FOLDER, BASE_NAME
-    CURRENT_CLIP_FOLDER = "{}/CLIP-{}_{:03d}".format(BASE_CLIP_FOLDER, BASE_NAME, FOLDER_INDEX)
-    os.mkdir(CURRENT_CLIP_FOLDER)
+    while True:
+        try:
+            CURRENT_CLIP_FOLDER = "{}/CLIP-{}_{:03d}".format(BASE_CLIP_FOLDER, BASE_NAME, FOLDER_INDEX)
+            os.mkdir(CURRENT_CLIP_FOLDER)
+            break
+        except OSError:
+            FOLDER_INDEX += 1
+            pass
     print("Created new clip folder: {}".format(CURRENT_CLIP_FOLDER))
 
 
@@ -149,8 +155,9 @@ setup_camera()
 def reset_i2c_bus():
     global i2c
     try:
-        i2c.deinit() # Deactivate I2C
-        i2c = machine.I2C(1, freq=100000)
+        i2c = None
+        time.sleep_ms(500)
+        i2c = machine.I2C(1, freq=50000)
         print("Reset I2C bus")
     except Exception as exception:
         print("Failed to reset I2C bus:", exception)

@@ -1,11 +1,12 @@
 # Constants
 
-CONSECUTIVE_PIXELS = 5 # Number of pixels in a row for it to count as an edge
-MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 5 # If the consecutive pixels exceed this value it won't be counted as a lane
+CONSECUTIVE_PIXELS = 3 # Number of pixels in a row for it to count as an edge
+MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 7 # If the consecutive pixels exceed this value it won't be counted as a lane
 THRESHOLD = 55 # Darkness Threshold, can be a constant but can also change dynamically
 DIRECTION_CHANGE_THRESHOLD = 40 # How far the border can move in a direction to still count as the other lane
 PAST_DIRECTION_CHANGE_SAVING = 10 # For how long past lanes should be saved
 COUNT_PAST_DIRECTION_CHANGE = 0
+CHECK_HEIGHT = 100
 HEIGHT = 240
 WIDTH = 320
 
@@ -79,7 +80,7 @@ class CenterLaneFinder:
         # You can implement another lane recognition algorithm here
         # Get a pixel from the image by using: pixel = self.pixel_getter.get_pixel(img, x, y)
         left_lane, right_lane = [], []
-        y = HEIGHT //2 #- (HEIGHT // 3) * 2
+        y = CHECK_HEIGHT #- (HEIGHT // 3) * 2
         mid_x = WIDTH // 2
         while not left_lane and not right_lane:
             left = self.find_edge(img, y, 10, mid_x)
@@ -89,8 +90,7 @@ class CenterLaneFinder:
             if right is not None:
                 right_lane.append(right)
             global THRESHOLD
-            print(THRESHOLD)
-            THRESHOLD = int(THRESHOLD * 1.2)
+            THRESHOLD = int(THRESHOLD * 1.5)
             if THRESHOLD > 200:
                 break
 
@@ -119,15 +119,15 @@ class CenterLaneFinder:
         total_normalized_brightness = 0.0  # Sum of normalized brightness values
         valid_pixel_count = 0  # Count of valid pixels
         lowest_brightness = 255
-        for x in range(32, WIDTH - 32, 10):
+        for x in range(32, WIDTH - 32, 2):
             # Get pixel brightness (assumed 8-bit value)
-            brightness = self.pixel_getter.get_pixel(img, x, (HEIGHT // 2))
+            brightness = self.pixel_getter.get_pixel(img, x, CHECK_HEIGHT)
             if brightness < lowest_brightness:
                 lowest_brightness = brightness
 
         global THRESHOLD
-        THRESHOLD = int(lowest_brightness * 1.5)
-        print(THRESHOLD)
+        THRESHOLD = int(lowest_brightness * 1.3)
+        #print(THRESHOLD)
 
     def check_for_direction_change(self, left_lane, right_lane):
         """

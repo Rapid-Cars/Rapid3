@@ -20,8 +20,9 @@ char buffer[BUFFER_SIZE];
 int speed = 0;   // Speed of the motor
 int angle = 0;   // Steering angle of the servo
 int count = 0;
-int speeds[5];
-int angles[5];
+int maxCount = 2;
+int speeds[2];
+int angles[2];
 
 unsigned long lastReceiveTime = 0; // Tracks the last time data was received
 const unsigned long timeout = 200; // 200 millisecond timeout
@@ -29,7 +30,7 @@ const unsigned long timeout = 200; // 200 millisecond timeout
 void setup() {
   // Init esc
   escPin = 29; //CHANGE BEFORE USE
-  escMaxSpeed = 0.08;
+  escMaxSpeed = 0.16;
   esc.attach(escPin, 1000, 2000);
 
   // Init servo
@@ -51,7 +52,10 @@ void setup() {
   setESCSpeed(0);
   delay(1000);
   setSteeringAngle(50);
+  delay(3000);
 }
+
+void(* resetFunc) (void) = 0;
 
 void loop() {
   // Check for timeout
@@ -59,15 +63,14 @@ void loop() {
     Serial.println("Timeout: No data received for 200  milliseconds. Stopping car.");
     setESCSpeed(0); // Stop the car
     setSteeringAngle(50); // Set steering to neutral
-    delay(2000);
+    Serial.println("Restarting");
+    resetFunc();
     //exit(0); // Exit the program
   } else {
     // Process data from the camera
     processCameraData(speed, angle);
     delay(10);
   }
-
-
   
 
   // For testing
@@ -81,22 +84,26 @@ void loop() {
 // Uses the last five values for each to build an average value.
 // The average value will then be sent to proper functions.
 void processCameraData(int speed, int angle) {
+  setESCSpeed(speed);
+  setSteeringAngle(angle);
+
+  /*
   speeds[count] = speed;
   angles[count] = angle;
   count = count + 1;
-  if (count > 4) {
+  if (count > (maxCount-1)) {
     count = 0;
     int averageSpeed = 0;
     int averageAngle = 0;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < maxCount; i++) {
       averageSpeed += speeds[i];
       averageAngle += angles[i];
     }
-    averageSpeed = averageSpeed / 5;
-    averageAngle = averageAngle / 5;
+    averageSpeed = averageSpeed / maxCount;
+    averageAngle = averageAngle / maxCount;
     setESCSpeed(averageSpeed);
     setSteeringAngle(averageAngle);
-  }
+  }*/
 }
 
 // Sets the speed of the esc

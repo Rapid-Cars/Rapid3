@@ -111,14 +111,14 @@ def calculate_movement_params(left_lane, right_lane):
         tuple of int: A tuple containing the calculated speed and steering
         angle.
     """
-    calculated_speed = 10
+    calculated_speed = 5
     calculated_steering = 50
 
     if not left_lane and not right_lane:
         return calculated_speed, calculated_steering
 
     deviation = find_middle_deviation(left_lane, right_lane)
-    deviation = deviation * 1.9
+    deviation = deviation * abs(deviation) * 2.1
 
     calculated_steering = int(50 - deviation * 50)
     # Limit the steering values to 0-100
@@ -128,13 +128,13 @@ def calculate_movement_params(left_lane, right_lane):
         calculated_steering = 100
 
     calculated_speed = int((1 - abs(deviation)) * 100)
-    calculated_speed = int(calculated_speed * 1.5)
+    calculated_speed = int(calculated_speed * 0.5)
     # Limit the speed to values between 10 and 100
-    if calculated_speed < 10:
-        calculated_speed = 10
+    if calculated_speed < 5:
+        calculated_speed = 5
     if calculated_speed > 100:
         calculated_speed = 100
-
+    print(calculated_speed)
     return calculated_speed, calculated_steering
 
 
