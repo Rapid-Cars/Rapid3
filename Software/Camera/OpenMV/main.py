@@ -11,17 +11,16 @@ from libraries.lane_recognition import *
 # noinspection PyUnresolvedReferences
 from libraries.movement_params import *
 # noinspection PyUnresolvedReferences
+from libraries.communication_management import *
+# noinspection PyUnresolvedReferences
 from machine import LED
 from common import *
 
 
-# region Initialize I2C
+# region Initialize Communication Handler
 
-# Pinout:
-# P4: SCL
-# P5: SDA
-i2c = machine.I2C(1, freq=100000)
-SLAVE_ADDRESS = 0x12  # Address of Teensy
+# noinspection PyUnresolvedReferences
+COMMUNICATION_MANAGER = get_communication_manager("I2CTeensy")
 
 # endregion
 
@@ -152,17 +151,6 @@ setup_camera()
 
 # region Main loop
 
-def reset_i2c_bus():
-    global i2c
-    try:
-        i2c = None
-        time.sleep_ms(500)
-        i2c = machine.I2C(1, freq=50000)
-        print("Reset I2C bus")
-    except Exception as exception:
-        print("Failed to reset I2C bus:", exception)
-
-
 def main_loop():
     """
     Main loop for processing image frames and performing lane detection, controlling movement parameters,
@@ -182,16 +170,8 @@ def main_loop():
     save_frame_to_file(img)
 
     # Send data via I2C to the Teensy ------------------------------------------
-    try:
-        # Format Data as CSV
-        formatted_message = f"{speed},{steering}"
-        i2c.writeto(SLAVE_ADDRESS, formatted_message.encode('utf-8'))  # Send
-        print("Sent - Speed: ", speed, ", Steering: ", steering)
-    except OSError as exception:
-        with open("/sdcard/i2c_log.txt", "a") as f_i2c:
-            f_i2c.write("I2C Error: " + str(exception) + "\n")
-        reset_i2c_bus()
-        print("I2C Error:", exception)
+    COMMUNICATION_MANAGER.send_movement_data(speed, steering)
+    print("Sent speed and steering commands:", speed, steering)
 
     print(clock.fps())
 
