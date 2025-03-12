@@ -547,7 +547,7 @@ def start():
     json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
 
     # region setup
-    base_name = generate_base_name(get_lane_recognition_id, get_movement_params_instance)
+    base_name = generate_base_name(get_lane_recognition_id, get_movement_params_id)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
     json_input_path = os.path.join(input_path, "Processed", json_input)
