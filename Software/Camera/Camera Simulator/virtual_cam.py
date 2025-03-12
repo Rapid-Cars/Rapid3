@@ -1,7 +1,11 @@
+import platform
+import re
+import subprocess
 import cv2
 import os
 import json
 import gzip
+from tkinter import Tk, filedialog
 
 from Software.Camera.lane_recognition import *
 from Software.Camera.movement_params import *
@@ -226,7 +230,6 @@ def draw_steering(img, steering_angle, primary):
 
 # region File name handling ---------------------------------------------------------------
 
-
 def set_input_and_output(input_path, video_name, processing_name):
     """
         Prepares the input and output file paths for video processing.
@@ -284,8 +287,9 @@ def set_json_path(input_path, output_path):
     """
     global JSON_INPUT_PATH
     global JSON_OUTPUT_PATH
-    if os.path.exists(input_path):
-        JSON_INPUT_PATH = input_path
+    if input_path:
+        if os.path.exists(input_path):
+            JSON_INPUT_PATH = input_path
     JSON_OUTPUT_PATH = output_path
 
 
@@ -491,6 +495,87 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
 
 # endregion
 
+# region User config ----------------------------------------------------------------------
+
+CONFIG_FILE = "config.json"
+
+def load_config():
+    """Loads saved configuration from config.json."""
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as file:
+            return json.load(file)
+    return {}
+
+
+def save_config(config):
+    """Saves configuration to config.json."""
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file, indent=4)
+
+
+def extract_base_name(filename):
+    """Extracts the base name from the video file, excluding description and extension."""
+    match = re.match(r"(CLIP-v\d+\.\d+\.\d+-LR\d+-SLR-?\d+-MP\d+)", filename)
+    return match.group(1) if match else None
+
+
+def use_zenity():
+    """Returns True if Zenity (GNOME file picker) is available."""
+    return platform.system() == "Linux" and subprocess.run(["which", "zenity"], stdout=subprocess.PIPE).returncode == 0
+
+
+def zenity_file_picker(title, initial_dir, file_filter):
+    """Uses Zenity to open a native file picker on GNOME/KDE."""
+    cmd = ["zenity", "--file-selection", "--title", title, "--filename", f"{initial_dir}/"]
+    if file_filter:
+        cmd += ["--file-filter", f"{file_filter} | {file_filter}"]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def select_video_file(last_path="", last_file=""):
+    """Selects a video file using Zenity (Linux) or Tkinter (Windows/macOS)."""
+    initial_dir = last_path if os.path.exists(last_path) else os.getcwd()
+
+    if use_zenity():
+        return zenity_file_picker("Select Video File", initial_dir, "*.mp4")
+
+    Tk().withdraw()  # Hide root Tk window
+    return filedialog.askopenfilename(
+        title="Select Video File",
+        initialdir=initial_dir,
+        initialfile=last_file,
+        filetypes=[("MP4 Files", "*.mp4")],
+    )
+
+
+def select_json_file(directory, base_name):
+    """Selects a JSON file, filtering by base name using Tkinter."""
+    if os.path.exists(directory):
+        initial_dir = os.path.join(directory, "Processed")
+    else:
+        initial_dir = os.getcwd()
+
+    matching_json_files = [
+        f for f in os.listdir(initial_dir)
+        if f.endswith(".json") and f.startswith(base_name)
+    ]
+    print(matching_json_files)
+    if not matching_json_files:  # If no matching JSON files exist, return empty
+        return ""
+
+    Tk().withdraw()
+    filetypes = [(f"{base_name} JSON Files", matching_json_files)] if matching_json_files else [
+        ("JSON Files", "*.json")]
+
+    return filedialog.askopenfilename(
+        title="Select JSON File (Optional)",
+        initialdir=initial_dir,
+        filetypes=filetypes,
+    )
+
+
+# endregion
 
 def start():
     """
@@ -527,34 +612,43 @@ def start():
     main_lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance)
     movement_params = setup_movement_params(get_movement_params_instance)
 
-    """
-    Note for input_path:
-    - The input path is specific to each user
-    - On Windows use "\\" instead of "/" to mark a directory
-    - The input path must end with "\\" or "/"
-    - There has to be a separate directory for the output video file in the input directory.
-      - This directory must be named "Processed"
-    - 
-    
-    Note for video_name:
-    - The file must be in the directory specified by input_path
-    - The file extension must be ".mp4"
-    - You must include the file extension
-    """
-    input_path = "/home/robmroi/NextUP/NXP/Aufzeichnungen/Driving Clips/Version 0.4.x/" # Specific to user
-    video_name = "CLIP-v0.4.10-LR1-SLR-1-MP3_Drives_of_straight_track" + ".mp4" # Enter the name of the video file here
+    # region Config
 
-    json_input = "" + ".json" # Enter the name of the json file with which you want to compare or leave it empty.
+    # Load or initialize config
+    config = load_config()
+    last_used_path = config.get("input_path", "")
+    last_video = config.get("video_name", "")
+    last_json = config.get("json_input", "")
+
+    # Let the user select a video
+    video_file = select_video_file(last_used_path, last_video)
+    if video_file:
+        input_path = os.path.dirname(video_file)
+        video_name = os.path.basename(video_file)
+        config["input_path"] = input_path
+        config["video_name"] = video_name
+    else:
+        input_path = last_used_path
+        video_name = last_video
+
+    # Extract base name for JSON filtering
+    base_name = extract_base_name(video_name)
+
+    # Let the user select an optional JSON file
+    json_input = select_json_file(input_path, base_name) if video_file else last_json
+    config["json_input"] = json_input
+
+    # Save updated config
+    save_config(config)
+
+    # endregion
 
     # region setup
     base_name = generate_base_name(get_lane_recognition_id, get_movement_params_id)
     input_video, output_video = set_input_and_output(input_path, video_name, base_name)
 
-    json_input_path = os.path.join(input_path, "Processed", json_input)
     json_output_path = output_video.replace(".avi", ".json")
-
-
-    set_json_path(json_input_path, json_output_path)
+    set_json_path(json_input, json_output_path)
     # endregion
 
     # Process video
