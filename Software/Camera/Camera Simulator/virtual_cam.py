@@ -556,6 +556,9 @@ def select_json_file(directory, base_name):
     else:
         initial_dir = os.getcwd()
 
+    if not base_name:
+        base_name = ""
+
     matching_json_files = [
         f for f in os.listdir(initial_dir)
         if f.endswith(".json") and f.startswith(base_name)
@@ -622,6 +625,9 @@ def start():
 
     # Let the user select a video
     video_file = select_video_file(last_used_path, last_video)
+    if platform.system() == "Windows":
+        video_file = video_file.replace("/", "\\")
+
     if video_file:
         input_path = os.path.dirname(video_file)
         video_name = os.path.basename(video_file)
