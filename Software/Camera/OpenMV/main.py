@@ -20,7 +20,7 @@ from common import *
 # region Initialize Communication Handler
 
 # noinspection PyUnresolvedReferences
-COMMUNICATION_MANAGER = get_communication_manager("I2CTeensy")
+COMMUNICATION_MANAGER = get_communication_manager("DirectPWM")
 
 # endregion
 
