@@ -3,10 +3,11 @@
 CONSECUTIVE_PIXELS = 3 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 7 # If the consecutive pixels exceed this value it won't be counted as a lane
 THRESHOLD = 55 # Darkness Threshold, can be a constant but can also change dynamically
-DIRECTION_CHANGE_THRESHOLD = 40 # How far the border can move in a direction to still count as the other lane
+DIRECTION_CHANGE_THRESHOLD = 50 # How far the border can move in a direction to still count as the other lane
 PAST_DIRECTION_CHANGE_SAVING = 10 # For how long past lanes should be saved
 COUNT_PAST_DIRECTION_CHANGE = 0
-CHECK_HEIGHT = 100
+CHECK_HEIGHT = 120 # 0-239 0: Top of image 239: Bottom
+MAX_ITERATIONS = 8
 HEIGHT = 240
 WIDTH = 320
 
@@ -75,27 +76,35 @@ class CenterLaneFinder:
         """
         if not self.pixel_getter:
             raise ValueError("Pixel getter has not been set up. Call setup() first.")
-
         self.set_threshold(img)
         # You can implement another lane recognition algorithm here
         # Get a pixel from the image by using: pixel = self.pixel_getter.get_pixel(img, x, y)
         left_lane, right_lane = [], []
         y = CHECK_HEIGHT #- (HEIGHT // 3) * 2
-        mid_x = WIDTH // 2
+        iterations = 0
         while not left_lane and not right_lane:
-            left = self.find_edge(img, y, 10, mid_x)
+            if not LAST_LEFT_LANE:
+                left_start = WIDTH // 2
+            else:
+                _, x = LAST_LEFT_LANE[0]
+                left_start = min(x + DIRECTION_CHANGE_THRESHOLD, WIDTH - 1)
+            left = self.find_edge(img, y, left_start, 10)
             if left is not None:
                 left_lane.append(left)
-            right = self.find_edge(img, y, WIDTH - 10, mid_x)
+            if not LAST_RIGHT_LANE:
+                right_start = WIDTH // 2
+            else:
+                _, x = LAST_RIGHT_LANE[0]
+                right_start = max(0, x - DIRECTION_CHANGE_THRESHOLD)
+            right = self.find_edge(img, y, right_start, WIDTH - 10)
             if right is not None:
                 right_lane.append(right)
             global THRESHOLD
             THRESHOLD = int(THRESHOLD * 1.5)
-            if THRESHOLD > 200:
+            iterations += 1
+            if THRESHOLD > 200 or iterations > MAX_ITERATIONS:
                 break
-
         left_lane, right_lane = self.check_for_direction_change(left_lane, right_lane)
-
         return left_lane, right_lane
 
     def get_threshold(self):
@@ -129,7 +138,7 @@ class CenterLaneFinder:
                 lowest_brightness = brightness
 
         global THRESHOLD
-        THRESHOLD = int(lowest_brightness * 1.3)
+        THRESHOLD = int(lowest_brightness * 1.4)
         #print(THRESHOLD)
 
     def check_for_direction_change(self, left_lane, right_lane):
@@ -210,7 +219,6 @@ class CenterLaneFinder:
             LAST_LEFT_LANE = left_lane
             LAST_RIGHT_LANE = right_lane
             COUNT_PAST_DIRECTION_CHANGE = 0
-
         return left_lane, right_lane
 
     def find_edge(self, img, y, x_start, x_end):
@@ -252,7 +260,7 @@ class CenterLaneFinder:
             if self.pixel_getter.get_pixel(img, x, y) < THRESHOLD:
                 consecutive_count += 1
                 if consecutive_count >= CONSECUTIVE_PIXELS:
-                    if not first_x:
+                    if first_x is None:
                         first_x = x
             else:
                 consecutive_count = 0
