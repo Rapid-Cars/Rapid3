@@ -332,6 +332,8 @@ class BaseInitiatedDarknessFinder(BaseInitiatedFinder):
 
         return int(average_brightness / 2)
 
+    def get_threshold(self):
+        return self.THRESHOLD
 
     def get_lane_element(self, img, x, y):
         """

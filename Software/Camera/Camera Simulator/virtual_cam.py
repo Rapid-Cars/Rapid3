@@ -226,6 +226,23 @@ def draw_steering(img, steering_angle, primary):
     line_end_x = line_start_x + line_length
     cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), color, 1)
 
+def make_image_binary(img, gray, threshold):    #checks whole image except ignore zone for dark pixels and makes it black/white
+    x_min, y_min, x_max, y_max = get_ignore_zone()
+
+    for x in range(0, 319):
+        for y in range(0, 239):
+            pixel_color = (0, 0, 0)
+            white = (gray[y, x] > threshold)
+            if white:
+                pixel_color = (255, 255, 255)
+            if y_max < y < y_min and x_min < x < x_max: #check for ignore zone
+                pixel_color = (70, 70, 70)
+                if white:
+                    pixel_color = (200, 200, 200)
+
+
+            img[y, x] = pixel_color
+
 # endregion
 
 # region File name handling ---------------------------------------------------------------
@@ -450,6 +467,9 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
 
     speed, steering, left_lane, right_lane, sec_left_lane, sec_right_lane, process_left_lane, process_right_lane \
         = set_speed_and_steering(gray, main_lane_recognition, secondary_lane_recognition, movement_params, return_lanes=True)
+
+    threshold = main_lane_recognition.get_threshold()
+    make_image_binary(img, gray, threshold)
 
     draw_debug_visuals(img, True, left_lane, main_lane_recognition, process_left_lane, process_right_lane, right_lane,
                        sec_left_lane, sec_right_lane, secondary_lane_recognition, speed, steering)

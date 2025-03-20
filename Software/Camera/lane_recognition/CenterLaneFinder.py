@@ -98,6 +98,9 @@ class CenterLaneFinder:
 
         return left_lane, right_lane
 
+    def get_threshold(self):
+        return THRESHOLD
+
     def set_threshold(self, img):
         """
         Calculate the average brightness of an image and set a threshold for lane detection.

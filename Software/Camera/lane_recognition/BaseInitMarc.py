@@ -19,6 +19,9 @@ class BaseInitMarc:
         """
         self.pixel_getter = pixel_getter
 
+    def get_threshold(self):
+        return THRESHOLD
+
     def recognize_lanes(self, img):
         """
         Recognizes lanes from a provided image by identifying the edges of the lanes
