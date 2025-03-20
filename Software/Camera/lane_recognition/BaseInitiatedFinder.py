@@ -74,9 +74,9 @@ def get_is_in_ignore_zone(x, y):
             y: int - The y coordinate to be checked.
     """
     y_min = HEIGHT
-    y_max = 115
+    y_max = 145
     x_min = 110
-    x_max = 240
+    x_max = 235
     if y_max < y < y_min:
         if x_min < x < x_max:
             return True

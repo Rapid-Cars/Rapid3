@@ -1,12 +1,12 @@
 def get_settings():
     """
     Returns the values used for version and algorithm names
-    Usable lane_recognition values: CenterLaneFinder, BaseInitiatedDarknessFinder, BaseInitiatedContrastFinder, BaseInitMarc
+    Usable lane_recognition values: CenterLaneFinder, BaseInitiatedDarknessFinder, BaseInitiatedContrastFinder, BaseInitMarc, SobelEdgeDetection
     Usable movement_params values: CenterLaneDeviationDriver, CenterDeviationDriver, DominantLaneAngleDriver, AverageAngleDriver
     """
     return {
-        "version": "0.4.11",
-        "main_lane_recognition": "CenterLaneFinder",
+        "version": "0.4.26",
+        "main_lane_recognition": "SobelEdgeDetection",
         "secondary_lane_recognition": "None",
         "movement_params": "CenterLaneDeviationDriver",
     }
@@ -67,16 +67,13 @@ def set_speed_and_steering(img, lane_recognition, secondary_lane_recognition, mo
     left_lane, right_lane = lane_recognition.recognize_lanes(img)
     sec_left_lane, sec_right_lane = None, None
     process_left_lane, process_right_lane = left_lane, right_lane
-
     if secondary_lane_recognition:
         # Use the secondary algorithm only if the main algorithm doesn't recognize enough Elements
         if len(left_lane) + len(right_lane) < 7:
             sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
             process_left_lane = update_lane_data(left_lane, sec_left_lane)
             process_right_lane = update_lane_data(right_lane, sec_right_lane)
-
     speed, steering = movement_params.get_movement_params(left_lane, right_lane)
-
     if return_lanes:
         return int(speed), int(steering), left_lane, right_lane, sec_left_lane, sec_right_lane, process_left_lane, process_right_lane
     return int(speed), int(steering)

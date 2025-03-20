@@ -49,7 +49,7 @@ class DirectPWM:
         self.set_esc_speed(0)
         self.set_steering_value(50)
 
-        update_timer.init(freq=100, mode=Timer.PERIODIC, callback=self.update_pwm)
+        update_timer.init(freq=1000, mode=Timer.PERIODIC, callback=self.update_pwm)
 
 
     def update_pwm(self, t):

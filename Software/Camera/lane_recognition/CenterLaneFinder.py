@@ -1,8 +1,8 @@
 # Constants
 
 CONSECUTIVE_PIXELS = 3 # Number of pixels in a row for it to count as an edge
-MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 7 # If the consecutive pixels exceed this value it won't be counted as a lane
-THRESHOLD = 55 # Darkness Threshold, can be a constant but can also change dynamically
+MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 4 # If the consecutive pixels exceed this value it won't be counted as a lane
+THRESHOLD = 85 # Darkness Threshold, can be a constant but can also change dynamically
 DIRECTION_CHANGE_THRESHOLD = 50 # How far the border can move in a direction to still count as the other lane
 PAST_DIRECTION_CHANGE_SAVING = 10 # For how long past lanes should be saved
 COUNT_PAST_DIRECTION_CHANGE = 0

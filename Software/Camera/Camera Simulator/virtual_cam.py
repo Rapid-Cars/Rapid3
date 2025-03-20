@@ -122,9 +122,9 @@ def get_ignore_zone():
         - tuple: (x_min, y_min, x_max, y_max) specifying the ignore zone's rectangle.
     """
     y_min = HEIGHT
-    y_max = 115
+    y_max = 145
     x_min = 110
-    x_max = 240
+    x_max = 230
     return x_min, y_min, x_max, y_max
 
 
@@ -226,10 +226,14 @@ def draw_steering(img, steering_angle, primary):
     line_end_x = line_start_x + line_length
     cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), color, 1)
 
+from lane_recognition import SobelEdgeDetection
+sobel = SobelEdgeDetection()
+sobel.setup(get_pixel_getter('virtual_cam'))
+
 def make_image_binary(img, gray, threshold):    #checks whole image except ignore zone for dark pixels and makes it black/white
     x_min, y_min, x_max, y_max = get_ignore_zone()
-
-    for x in range(0, 319):
+    img = sobel.create_binary_image(gray, img)
+    """for x in range(0, 319):
         for y in range(0, 239):
             pixel_color = (0, 0, 0)
             white = (gray[y, x] > threshold)
@@ -241,7 +245,7 @@ def make_image_binary(img, gray, threshold):    #checks whole image except ignor
                     pixel_color = (200, 200, 200)
 
 
-            img[y, x] = pixel_color
+            img[y, x] = pixel_color"""
 
 # endregion
 
@@ -576,9 +580,6 @@ def select_json_file(directory, base_name):
     else:
         initial_dir = os.getcwd()
 
-    if not base_name:
-        base_name = ""
-
     matching_json_files = [
         f for f in os.listdir(initial_dir)
         if f.endswith(".json") and f.startswith(base_name)
@@ -645,9 +646,6 @@ def start():
 
     # Let the user select a video
     video_file = select_video_file(last_used_path, last_video)
-    if platform.system() == "Windows":
-        video_file = video_file.replace("/", "\\")
-
     if video_file:
         input_path = os.path.dirname(video_file)
         video_name = os.path.basename(video_file)
@@ -661,7 +659,7 @@ def start():
     base_name = extract_base_name(video_name)
 
     # Let the user select an optional JSON file
-    json_input = select_json_file(input_path, base_name) if video_file else last_json
+    json_input = None #select_json_file(input_path, base_name) if video_file else last_json
     config["json_input"] = json_input
 
     # Save updated config
