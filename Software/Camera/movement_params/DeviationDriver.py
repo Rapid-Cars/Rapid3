@@ -1,5 +1,7 @@
-HEIGHT = 240
-WIDTH = 320
+import math
+
+HEIGHT = 120
+WIDTH = 160
 
 
 def calculate_deviation(left_border_element, right_border_element):
@@ -35,6 +37,20 @@ def calculate_deviation(left_border_element, right_border_element):
         deviation = -1
     return deviation
 
+def adjust_deviation(deviation):
+    """Adjusts the deviation based on given steps"""
+    thresholds = [(0.1, 0), (0.2, 0.25), (0.3, 0.4), (0.5, 0.9)]
+
+    abs_deviation = abs(deviation)
+    adjusted_deviation = 1.0  # Standardwert für große Abweichungen
+
+    for threshold, value in thresholds:
+        if abs_deviation < threshold:
+            adjusted_deviation = value
+            break
+
+    return adjusted_deviation * (-1 if deviation < 0 else 1)
+
 
 def find_closest_in_range(lane, target, range_min, range_max):
     """
@@ -56,7 +72,8 @@ def find_closest_in_range(lane, target, range_min, range_max):
 def find_deviation_at_height(left_lane, right_lane, check_height):
 
     # Tolerance for values
-    tolerance = 30
+    #tolerance = 30
+    tolerance = 15
     range_min = check_height - tolerance
     range_max = check_height + tolerance
 
@@ -84,10 +101,12 @@ def find_deviation_at_height(left_lane, right_lane, check_height):
     # Case 3: One value exists and is close to the check_height
     if closest_left:
         _, x_left = closest_left
-        return calculate_deviation(x_left, WIDTH + 100)
+        #return calculate_deviation(x_left, WIDTH + 100)
+        return calculate_deviation(x_left, WIDTH + 50)
     elif closest_right:
         _, x_right = closest_right
-        return calculate_deviation(-100, x_right)
+        #return calculate_deviation(-100, x_right)
+        return calculate_deviation(-50, x_right)
 
     # Case 4: Nothing found
     return 0
@@ -123,8 +142,8 @@ class CenterLaneDeviationDriver:
         if not left_lane and not right_lane:
             return calculated_speed, calculated_steering
 
-        deviation = find_deviation_at_height(left_lane, right_lane, 120)
-        deviation = deviation * abs(deviation) * 2.1
+        deviation = find_deviation_at_height(left_lane, right_lane, 50)
+        deviation = deviation * math.sqrt(abs(deviation)) * 2.6
 
         calculated_steering = int(50 - deviation * 50)
         # Limit the steering values to 0-100
@@ -157,8 +176,8 @@ class StraightAwareCenterLaneDriver:
         if not left_lane and not right_lane:
             return calculated_speed, calculated_steering
 
-        center_lane_deviation = find_deviation_at_height(left_lane, right_lane, 120)
-        center_lane_deviation = center_lane_deviation  * 3
+        center_lane_deviation = find_deviation_at_height(left_lane, right_lane, 50)
+        center_lane_deviation = adjust_deviation(center_lane_deviation)
 
         calculated_steering = int(50 - center_lane_deviation * 50)
         # Limit the steering values to 0-100
@@ -167,14 +186,25 @@ class StraightAwareCenterLaneDriver:
         if calculated_steering > 100:
             calculated_steering = 100
 
-        bottom_lane_deviation = find_deviation_at_height(left_lane, right_lane, 200)
+        #bottom_lane_deviation = find_deviation_at_height(left_lane, right_lane, 65)
 
-        top_lane_deviation = find_deviation_at_height(left_lane, right_lane, 40)
+        top_lane_deviation = find_deviation_at_height(left_lane, right_lane, 20)
+        top_lane_deviation = adjust_deviation(top_lane_deviation)
 
-        speed_factor = self.compute_speed_factor(bottom_lane_deviation, center_lane_deviation, top_lane_deviation)
+        speed_factor = 1
+        if len(left_lane) < 3 or len(right_lane) < 3:
+            speed_factor = speed_factor * 0.5
+        if top_lane_deviation > 0.3:
+            speed_factor = speed_factor * 0.6
+        if abs(top_lane_deviation - center_lane_deviation) > 0.1:
+            speed_factor = speed_factor * 0.6
+
+        #speed_factor = self.compute_speed_factor(bottom_lane_deviation, center_lane_deviation, top_lane_deviation)
 
         calculated_speed = int((1 - abs(center_lane_deviation)) * 100)
-        calculated_speed = int(calculated_speed * 0.5 * speed_factor)
+        if calculated_speed > 100:
+            calculated_speed = 100
+        calculated_speed = int(calculated_speed * 1 * speed_factor)
         # Limit the speed to values between 10 and 100
         if calculated_speed < 5:
             calculated_speed = 5
@@ -183,31 +213,4 @@ class StraightAwareCenterLaneDriver:
         return calculated_speed, calculated_steering
 
     def compute_speed_factor(self, bottom_lane_deviation, center_lane_deviation, top_lane_deviation):
-        straight_deviation_threshold = 0.1  # Tolerance for "close to 0"
-
-
-        deviation_difference = abs(bottom_lane_deviation - top_lane_deviation)
-
-        # Case 1: Perfectly centered and straight road
-        if (abs(bottom_lane_deviation) < straight_deviation_threshold
-                and abs(center_lane_deviation) < straight_deviation_threshold
-                and abs(top_lane_deviation) < straight_deviation_threshold):
-            return 2.0  # Maximum speed
-
-        # Case 2: Slight deviation, but straight road
-        if deviation_difference < 0.05:
-            if abs(center_lane_deviation) < 0.2:
-                return 1.9  # Almost max speed
-            return 1.7  # Still fast but safer
-
-        # Case 3: Stronger deviation, but still a straight road
-        if 0.1 <= deviation_difference < 0.2:
-            return 1.5  # Moderate speed to allow correction
-
-        # Case 4: Curve detected (top and bottom deviation differ significantly)
-        if deviation_difference >= 0.2:
-            if abs(center_lane_deviation) > 0.3:
-                return 1.2  # Slow speed for safe cornering
-            return 1.4  # Slightly faster if not too far off center
-
-        return 1.0  # Default safe speed if no clear case applies
+        return 1

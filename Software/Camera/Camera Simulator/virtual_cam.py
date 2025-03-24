@@ -9,10 +9,10 @@ from tkinter import Tk, filedialog
 
 from Software.Camera.lane_recognition import *
 from Software.Camera.movement_params import *
-from common import *
+from Software.Camera.common import *
 
-HEIGHT = 240
-WIDTH = 320
+HEIGHT = 120
+WIDTH = 160
 
 # region Debug visualisations -------------------------------------------------------------
 
@@ -226,13 +226,9 @@ def draw_steering(img, steering_angle, primary):
     line_end_x = line_start_x + line_length
     cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), color, 1)
 
-from lane_recognition import SobelEdgeDetection
-sobel = SobelEdgeDetection()
-sobel.setup(get_pixel_getter('virtual_cam'))
-
-def make_image_binary(img, gray, threshold):    #checks whole image except ignore zone for dark pixels and makes it black/white
+def make_image_binary(img, gray, threshold, lane_rec):    #checks whole image except ignore zone for dark pixels and makes it black/white
     x_min, y_min, x_max, y_max = get_ignore_zone()
-    img = sobel.create_binary_image(gray, img)
+    img = lane_rec.create_binary_image(gray, img)
     """for x in range(0, 319):
         for y in range(0, 239):
             pixel_color = (0, 0, 0)
@@ -413,7 +409,8 @@ def load_video(main_lane_recognition, secondary_lane_recognition, movement_param
     cap = cv2.VideoCapture(input_video)
     # noinspection PyUnresolvedReferences
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(output_video, fourcc, 30.0, (320, 240))
+    out = cv2.VideoWriter(output_video, fourcc, 30.0, (WIDTH, HEIGHT))
+
 
     frame_count = 1
     json_compare_data = load_analysis_from_file()
@@ -473,7 +470,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
         = set_speed_and_steering(gray, main_lane_recognition, secondary_lane_recognition, movement_params, return_lanes=True)
 
     threshold = main_lane_recognition.get_threshold()
-    make_image_binary(img, gray, threshold)
+    make_image_binary(img, gray, threshold, main_lane_recognition)
 
     draw_debug_visuals(img, True, left_lane, main_lane_recognition, process_left_lane, process_right_lane, right_lane,
                        sec_left_lane, sec_right_lane, secondary_lane_recognition, speed, steering)

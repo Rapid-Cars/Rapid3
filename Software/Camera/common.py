@@ -2,13 +2,13 @@ def get_settings():
     """
     Returns the values used for version and algorithm names
     Usable lane_recognition values: CenterLaneFinder, BaseInitiatedDarknessFinder, BaseInitiatedContrastFinder, BaseInitMarc, SobelEdgeDetection
-    Usable movement_params values: CenterLaneDeviationDriver, CenterDeviationDriver, DominantLaneAngleDriver, AverageAngleDriver
+    Usable movement_params values: CenterLaneDeviationDriver, CenterDeviationDriver, DominantLaneAngleDriver, AverageAngleDriver, StraightAwareCenterLaneDriver
     """
     return {
-        "version": "0.4.26",
+        "version": "0.5.x",
         "main_lane_recognition": "SobelEdgeDetection",
         "secondary_lane_recognition": "None",
-        "movement_params": "CenterLaneDeviationDriver",
+        "movement_params": "StraightAwareCenterLaneDriver",
     }
 
 
