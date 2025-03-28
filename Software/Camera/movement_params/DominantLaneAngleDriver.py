@@ -49,6 +49,10 @@ class DominantLaneAngleDriver:
         Based on this angle, the vehicle steering angle is adjusted.
         The speed is adjusted based on the steering angle
         """
+
+        def __init__(self, driving_mode):
+            self.driving_mode = driving_mode
+
         def get_movement_params(self, left_lane, right_lane):
             """
             Calculates the movement parameters based on the given lane positions.

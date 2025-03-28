@@ -92,9 +92,9 @@ def setup_lane_recognition(pixel_getter, get_lane_recognition_instance):
     return main, secondary
 
 
-def setup_movement_params(get_movement_params_instance):
+def setup_movement_params(get_movement_params_instance, mode = 0):
     """
     Initializes the movement parameter instance.
     """
     settings = get_settings()
-    return get_movement_params_instance(settings["movement_params"])
+    return get_movement_params_instance(settings["movement_params"], mode)

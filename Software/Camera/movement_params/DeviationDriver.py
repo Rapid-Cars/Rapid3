@@ -3,6 +3,7 @@ import math
 HEIGHT = 120
 WIDTH = 160
 
+CHECK_HEIGHTS = [35, 50, 60, 75, 81]  # For QQVGA
 
 def calculate_deviation(left_border_element, right_border_element):
     """
@@ -39,7 +40,7 @@ def calculate_deviation(left_border_element, right_border_element):
 
 def adjust_deviation(deviation):
     """Adjusts the deviation based on given steps"""
-    thresholds = [(0.1, 0), (0.2, 0.25), (0.3, 0.4), (0.5, 0.9)]
+    thresholds = [(0.13, 0.0), (0.22, 0.15), (0.3, 0.35), (0.35, 0.6), (0.4, 0.9)]
 
     abs_deviation = abs(deviation)
     adjusted_deviation = 1.0  # Standardwert für große Abweichungen
@@ -116,6 +117,10 @@ class CenterLaneDeviationDriver:
     """
     TODO: Documentation
     """
+
+    def __init__(self, driving_mode):
+        self.driving_mode = driving_mode
+
     def get_movement_params(self, left_lane, right_lane):
         """
             Calculate the movement parameters (speed and steering angle) for a vehicle based on lane data.
@@ -166,6 +171,19 @@ class StraightAwareCenterLaneDriver:
     """
     TODO: Documentation
     """
+
+    def __init__(self, driving_mode):
+        self.last_speed = 0
+        self.brake_mode = False
+        self.brake_mode_count = 0
+        self.count = 0
+        self.driving_mode = driving_mode
+
+        # Constants
+        self.max_frames_brake_mode = 10
+        self.speed_threshold = 50
+
+
     def get_movement_params(self, left_lane, right_lane):
         """
 
@@ -176,28 +194,37 @@ class StraightAwareCenterLaneDriver:
         if not left_lane and not right_lane:
             return calculated_speed, calculated_steering
 
-        center_lane_deviation = find_deviation_at_height(left_lane, right_lane, 50)
+        center_lane_deviation = find_deviation_at_height(left_lane, right_lane, CHECK_HEIGHTS[2])
         center_lane_deviation = adjust_deviation(center_lane_deviation)
 
+        mid_lane_deviation = find_deviation_at_height(left_lane, right_lane, CHECK_HEIGHTS[1])
+        mid_lane_deviation = adjust_deviation(mid_lane_deviation)
+
         calculated_steering = int(50 - center_lane_deviation * 50)
+
+        if abs(mid_lane_deviation > 0.25):
+            calculated_steering = calculated_steering * 1.5
+
         # Limit the steering values to 0-100
         if calculated_steering < 0:
             calculated_steering = 0
         if calculated_steering > 100:
             calculated_steering = 100
 
-        #bottom_lane_deviation = find_deviation_at_height(left_lane, right_lane, 65)
+        #bottom_lane_deviation = find_deviation_at_height(left_lane, right_lane, CHECK_HEIGHTS[2])
 
-        top_lane_deviation = find_deviation_at_height(left_lane, right_lane, 20)
+        top_lane_deviation = find_deviation_at_height(left_lane, right_lane, CHECK_HEIGHTS[0])
         top_lane_deviation = adjust_deviation(top_lane_deviation)
 
         speed_factor = 1
         if len(left_lane) < 3 or len(right_lane) < 3:
-            speed_factor = speed_factor * 0.5
+            speed_factor = speed_factor * 0.8
         if top_lane_deviation > 0.3:
-            speed_factor = speed_factor * 0.6
+            speed_factor = speed_factor * 0.4
+        if mid_lane_deviation > 0.25:
+            speed_factor = speed_factor * 0.4
         if abs(top_lane_deviation - center_lane_deviation) > 0.1:
-            speed_factor = speed_factor * 0.6
+            speed_factor = speed_factor * 0.4
 
         #speed_factor = self.compute_speed_factor(bottom_lane_deviation, center_lane_deviation, top_lane_deviation)
 
@@ -210,7 +237,37 @@ class StraightAwareCenterLaneDriver:
             calculated_speed = 5
         if calculated_speed > 100:
             calculated_speed = 100
+        """
+        # Testing
+        if self.count < 250:
+            calculated_speed = 100
+        else:
+            calculated_speed = 10
+        self.count += 1
+        """
+        self.set_brake_mode(calculated_speed)
+        if self.brake_mode:
+            calculated_speed = 0
+        if self.driving_mode == 1:
+            calculated_speed = int(calculated_speed * 0.5)
+
+        self.last_speed = calculated_speed
+
         return calculated_speed, calculated_steering
 
-    def compute_speed_factor(self, bottom_lane_deviation, center_lane_deviation, top_lane_deviation):
-        return 1
+    def set_brake_mode(self, speed):
+        if speed > self.speed_threshold: # Speed is above self.speed_threshold, brake mode should be ended
+            self.brake_mode = False
+            self.brake_mode_count = 0
+            return
+        if self.last_speed > 0:
+            if (speed / self.last_speed) < 0.5: # Speed was above self.speed_threshold previously, should enter brake mode
+                self.brake_mode = True
+                self.brake_mode_count = 0
+                return
+
+        if self.brake_mode_count > self.max_frames_brake_mode: # Max frames for brake mode reached, disable brake mode
+            self.brake_mode = False
+            self.brake_mode_count = 0
+
+        self.brake_mode_count += 1

@@ -4,7 +4,7 @@ from .AverageAngleDriver import AverageAngleDriver
 from .DeviationDriver import CenterLaneDeviationDriver
 from .DeviationDriver import StraightAwareCenterLaneDriver
 
-def get_movement_params_instance(instance):
+def get_movement_params_instance(instance, driving_mode):
     """
     Retrieve an instance of a movement parameters class based on the given
     instance name. This function serves as a factory method to dynamically
@@ -26,15 +26,15 @@ def get_movement_params_instance(instance):
         If the 'instance' parameter does not match any known class name.
     """
     if instance == 'CenterDeviationDriver':
-        return CenterDeviationDriver()
+        return CenterDeviationDriver(driving_mode)
     elif instance == 'DominantLaneAngleDriver':
-        return DominantLaneAngleDriver()
+        return DominantLaneAngleDriver(driving_mode)
     elif instance == 'AverageAngleDriver':
-        return AverageAngleDriver()
+        return AverageAngleDriver(driving_mode)
     elif instance == 'CenterLaneDeviationDriver':
-        return CenterLaneDeviationDriver()
+        return CenterLaneDeviationDriver(driving_mode)
     elif instance == 'StraightAwareCenterLaneDriver':
-        return StraightAwareCenterLaneDriver()
+        return StraightAwareCenterLaneDriver(driving_mode)
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")

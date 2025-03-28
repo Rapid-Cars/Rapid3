@@ -90,5 +90,9 @@ class AverageAngleDriver:
     the vehicle's path to maintain alignment with the road, even when one of the lanes is missing
     or less defined.
     """
+
+    def __init__(self, driving_mode):
+        self.driving_mode = driving_mode
+
     def get_movement_params(self, left_lane, right_lane):
         return calculate_angle(left_lane, right_lane)

@@ -16,7 +16,6 @@ from libraries.communication_management import *
 from machine import LED
 from common import *
 
-
 # region Initialize Communication Handler
 
 # noinspection PyUnresolvedReferences
@@ -26,19 +25,35 @@ COMMUNICATION_MANAGER = get_communication_manager("DirectPWM")
 
 # region Set up the lane_recognition and movement_params which should be used
 
+def set_mode():
+    """
+    Sets the desired driving mode.
+    To set the mode you have to bridge Pin 1 with a pin between Pin 2 and Pin 6.
+    In total, you can have 6 different modes (Mode 0: No connection)
+    """
+    out_pin = machine.Pin("P1", machine.Pin.OUT)
+    out_pin.high()
+    for i in range(2, 7):
+        pin = machine.Pin("P" + str(i), machine.Pin.IN, machine.Pin.PULL_DOWN)
+        if pin.value() == 1:
+            out_pin.low()
+            return i-1
+    out_pin.low()
+    return 0
+
 # noinspection PyUnresolvedReferences
 pixel_getter = get_pixel_getter('camera')
 # noinspection PyUnresolvedReferences
 lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance)
 # noinspection PyUnresolvedReferences
-movement_params = setup_movement_params(get_movement_params_instance)
+movement_params = setup_movement_params(get_movement_params_instance, set_mode())
 
 # endregion
 
 # region File saving
 
-CLIP_DURATION = 10              # Clip duration in seconds
-BASE_CLIP_FOLDER = "/sdcard/clips"   # Folder for saving clips
+CLIP_DURATION = 10 # Clip duration in seconds
+BASE_CLIP_FOLDER = "/sdcard/clips" # Folder for saving clips
 CURRENT_CLIP_FOLDER, FILENAME = None, None
 VIDEO, START_TIME = None, None
 led = LED("LED_BLUE")
@@ -98,7 +113,7 @@ def save_frame_to_file(frame):
         print("Saving clip to:", FILENAME)
 
     try:
-        VIDEO.add_frame(frame) # Stream frame to file
+        VIDEO.add_frame(frame)  # Stream frame to file
         if time.ticks_diff(time.ticks_ms(), START_TIME) > CLIP_DURATION * 1000:
             VIDEO.close()
             print("Clip saved successfully.")
@@ -132,11 +147,11 @@ def setup_camera():
     # Camera initialization
     sensor.reset()
     sensor.set_pixformat(sensor.GRAYSCALE)  # Grayscale mode
-    sensor.set_framesize(sensor.QVGA)  # 320x240 pixels
-    sensor.set_contrast(3)
-    sensor.set_auto_gain(False)  # Disable automatic exposure
+    sensor.set_framesize(sensor.QQVGA)  # 320x240 pixels = QVGA, 160x120 pixels = QQVGA
+    # sensor.set_contrast(3)
+    # sensor.set_auto_gain(True)  # Disable automatic exposure
     # sensor.set_auto_exposure(False, exposure_us=15000)  # Set exposure to 15000 µs (adjust as needed)
-    sensor.skip_frames(time=2000)  # Time to stabilize the camera
+    sensor.skip_frames(time=500)  # Time to stabilize the camera
 
 # noinspection PyUnresolvedReferences
 clock = time.clock()

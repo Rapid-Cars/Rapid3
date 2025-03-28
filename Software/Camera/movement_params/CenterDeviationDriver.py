@@ -166,6 +166,10 @@ class CenterDeviationDriver:
     these deviations to determine the final steering and speed adjustments, ensuring
     smooth and precise navigation.
     """
+
+    def __init__(self, driving_mode):
+        self.driving_mode = driving_mode
+
     def get_movement_params(self, left_lane, right_lane):
         return calculate_movement_params(left_lane, right_lane)
 
