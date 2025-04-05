@@ -2,6 +2,9 @@ from .CenterLaneFinder import CenterLaneFinder
 from .BaseInitiatedFinder import BaseInitiatedContrastFinder, BaseInitiatedDarknessFinder
 from .BaseInitMarc import BaseInitMarc
 from .SobelEdgeDetection import SobelEdgeDetection
+from .SobelContinuousLaneFinder import SobelContinuousLaneFinder
+from .SobelLaneDistanceDetector import SobelLaneDistanceDetector
+from .FinishLineDetection import FinishLineDetection
 
 
 class PixelGetter:
@@ -39,7 +42,8 @@ class VirtualCamPixelGetter(PixelGetter):
         interface for retrieving pixel data from a frame of a video stream.
     """
     def get_pixel(self, img, x, y):
-        return img[y, x]
+        return img[y, x] > 200
+        #return img[y, x]
 
 
 def get_pixel_getter(type_name):
@@ -110,6 +114,10 @@ def get_lane_recognition_instance(instance):
         return BaseInitMarc()
     elif instance == 'SobelEdgeDetection':
         return SobelEdgeDetection()
+    elif instance == "SobelContinuousLaneFinder":
+        return SobelContinuousLaneFinder()
+    elif instance == 'SobelLaneDistanceDetector':
+        return SobelLaneDistanceDetector()
     # You can implement new instances here
     else:
         raise ValueError("Unknown process function specified.")
@@ -135,5 +143,11 @@ def get_lane_recognition_id(instance_name):
         "BaseInitiatedContrastFinder": 2,
         "BaseInitMarc": 3,
         "SobelEdgeDetection": 4,
+        "SobelContinuousLaneFinder": 5,
+        "SobelLaneDistanceDetector": 6,
     }.get(instance_name, -1)  # Default to -1 if not found
     return lane_recognition_id
+
+
+def get_finish_line_detection_instance(pixel_getter):
+    return FinishLineDetection(pixel_getter)

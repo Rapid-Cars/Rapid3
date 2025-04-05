@@ -16,16 +16,9 @@ from libraries.communication_management import *
 from machine import LED
 from common import *
 
-# region Initialize Communication Handler
-
-# noinspection PyUnresolvedReferences
-COMMUNICATION_MANAGER = get_communication_manager("DirectPWM")
-
-# endregion
-
 # region Set up the lane_recognition and movement_params which should be used
 
-def set_mode():
+def set_driving_mode():
     """
     Sets the desired driving mode.
     To set the mode you have to bridge Pin 1 with a pin between Pin 2 and Pin 6.
@@ -33,7 +26,7 @@ def set_mode():
     """
     out_pin = machine.Pin("P1", machine.Pin.OUT)
     out_pin.high()
-    for i in range(2, 7):
+    for i in range(2, 4):
         pin = machine.Pin("P" + str(i), machine.Pin.IN, machine.Pin.PULL_DOWN)
         if pin.value() == 1:
             out_pin.low()
@@ -41,12 +34,33 @@ def set_mode():
     out_pin.low()
     return 0
 
+def set_start_mode():
+    out_pin = machine.Pin("P4", machine.Pin.OUT)
+    out_pin.high()
+    input_pin = machine.Pin("P5", machine.Pin.IN, machine.Pin.PULL_DOWN)
+    if input_pin.value() == 1:
+        out_pin.low()
+        return True
+    out_pin.low()
+    return False
+
+DRIVING_MODE = set_driving_mode()
+START_MODE = set_start_mode()
+print("Start mode enabled!")
+
 # noinspection PyUnresolvedReferences
 pixel_getter = get_pixel_getter('camera')
 # noinspection PyUnresolvedReferences
-lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance)
+lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance, get_finish_line_detection_instance)
 # noinspection PyUnresolvedReferences
-movement_params = setup_movement_params(get_movement_params_instance, set_mode())
+movement_params = setup_movement_params(get_movement_params_instance, DRIVING_MODE)
+
+# endregion
+
+# region Initialize Communication Handler
+
+# noinspection PyUnresolvedReferences
+COMMUNICATION_MANAGER = get_communication_manager("DirectPWM", DRIVING_MODE)
 
 # endregion
 
@@ -69,7 +83,7 @@ def create_new_clip_folder():
     global CURRENT_CLIP_FOLDER, BASE_NAME
     while True:
         try:
-            CURRENT_CLIP_FOLDER = "{}/CLIP-{}_{:03d}".format(BASE_CLIP_FOLDER, BASE_NAME, FOLDER_INDEX)
+            CURRENT_CLIP_FOLDER = "{}/CLIP-{}_{:03d}-MODE{}".format(BASE_CLIP_FOLDER, BASE_NAME, FOLDER_INDEX, DRIVING_MODE)
             os.mkdir(CURRENT_CLIP_FOLDER)
             break
         except OSError:
@@ -165,7 +179,7 @@ setup_camera()
 # endregion
 
 # region Main loop
-
+start_time = time.ticks_ms()
 def main_loop():
     """
     Main loop for processing image frames and performing lane detection, controlling movement parameters,
@@ -178,29 +192,47 @@ def main_loop():
     """
     clock.tick()
     img = sensor.snapshot()  # Capture an image
-
+    img.sobel()  # Calls the sobel function which is implemented in the firmware
+    img.binary([(0, 90)]).invert()
+    img = img.to_bitmap()
+    check_for_finish_line(img)
     speed, steering = set_speed_and_steering(img, lane_recognition, secondary_lane_recognition, movement_params)
-
+    if START_MODE:
+        if (time.ticks_ms() - start_time) < 2100:
+            speed = 100
+    """elif (time.ticks_ms() - start_time) > 16250 and DRIVING_MODE == 2:
+        speed = speed // 4
+    elif (time.ticks_ms() - start_time) > 16000 and DRIVING_MODE == 1:
+        speed = speed // 4
+    elif (time.ticks_ms() - start_time) > 20000:
+        speed = speed // 4
+    """
     # Save video to sd card
     save_frame_to_file(img)
 
     # Send data via I2C to the Teensy ------------------------------------------
     COMMUNICATION_MANAGER.send_movement_data(speed, steering)
-    print("Sent speed and steering commands:", speed, steering)
+    #print("Sent speed and steering commands:", speed, steering)
 
-    print(clock.fps())
+    #print(clock.fps())
 
 # Watchdog Timer with 1 second timeout
 wdt = machine.WDT(timeout=1000) # 1000 ms
-
+#start_time = time.ticks_ms()
+#count = 0
 # main loop
 while True:
     try:
         wdt.feed()
         main_loop()
+        #count += 1
+        #if (time.ticks_ms() - start_time) > 10000:
+        #    text = "Count: {}".format(count)
+        #    raise ValueError(text)
     except Exception as e:
         with open("/sdcard/log.txt", "a") as f:
             f.write("Main Loop Crash: " + str(e) + "\n")
         print("Main Loop Crash:", e)
+        #break
 
 # endregion

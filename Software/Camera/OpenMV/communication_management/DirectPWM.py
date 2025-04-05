@@ -1,5 +1,7 @@
 import time
 # noinspection PyUnresolvedReferences
+import machine
+#noinspection PyUnresolvedReferences
 from machine import PWM, Timer
 
 # region init values
@@ -17,7 +19,7 @@ esc_pwm = PWM(ESC_PIN, freq=ESC_FREQUENCY, duty_u16=0)
 servo_pwm = PWM(SERVO_PIN, freq=SERVO_FREQUENCY, duty_u16=0)
 
 # Max Servo speed (scaling factor)
-ESC_MAX_SPEED = 0.16
+ESC_MAX_SPEED = 1
 
 # Values for the servos
 esc_value = 0
@@ -26,12 +28,16 @@ steering_value = 0
 # Timer for asynchronous updates
 update_timer = Timer()
 
+# Trigger pin for stopping before a cube
+TRIGGER_PIN = machine.Pin("P0", machine.Pin.IN, machine.Pin.PULL_DOWN)
+
 # endregion
 
 class DirectPWM:
 
-    def __init__(self):
+    def __init__(self, driving_mode):
         self.setup_new_communication()
+        self.driving_mode = driving_mode
 
 
     def setup_new_communication(self):
@@ -49,13 +55,18 @@ class DirectPWM:
         self.set_esc_speed(0)
         self.set_steering_value(50)
 
-        update_timer.init(freq=1000, mode=Timer.PERIODIC, callback=self.update_pwm)
+        update_timer.init(freq=100000, mode=Timer.PERIODIC, callback=self.update_pwm)
 
 
     def update_pwm(self, t):
         """
         This function is called periodically by the timer to update the ESC and servo values
         """
+        #if self.driving_mode == 2 or self.driving_mode == 3:
+        #print(TRIGGER_PIN.value())
+        if TRIGGER_PIN.value() == 1:
+            esc_pwm.duty_u16(3500)
+            return
         esc_pwm.duty_u16(esc_value)
         servo_pwm.duty_u16(steering_value)
 
@@ -89,10 +100,18 @@ class DirectPWM:
         steering = max(0, min(steering, 100))
         steering = 100 - steering
 
+        """
+        For steering:
+        The lower the number
+        """
+        steering_left = 6500 # Higher: Steers more to the left 6600, 3500 4825
+        steering_right = 3600 # Lower: Steers more to the right
+        steering_mid = 4750 # Change value for driving straight: Higher: More to the right, Lower: More to the left
+
         if steering < 50:
-            steering_value = int(self.map_value(steering, 3150, 4300, in_min=0, in_max=49))
+            steering_value = int(self.map_value(steering, steering_right, steering_mid, in_min=0, in_max=49))
         else:
-            steering_value = int(self.map_value(steering, 4300, 6300, in_min=50, in_max = 100))
+            steering_value = int(self.map_value(steering, steering_mid, steering_left, in_min=50, in_max = 100))
 
     def map_value(self, input_value, out_min, out_max, in_min=0, in_max=100):
         """
@@ -102,19 +121,25 @@ class DirectPWM:
 
 # Testing area
 """
-a = DirectPWM() # Just for debugging this class
-while True:
-    print("Testing speed")
-    for speed in range(0, 100):
-        a.send_movement_data(speed, 50)
-        time.sleep_ms(100)
+a = DirectPWM(0) # Just for debugging this class
 
-    print("Testing steering")
-    for steering in range(0, 100):
-        a.send_movement_data(0, steering)
+while True:
+    #a.send_movement_data(30, 50)
+    #time.sleep(100)
+    #print("Testing speed")
+    #for speed in range(0, 100):
+    #    a.send_movement_data(speed, 50)
+    #    time.sleep_ms(100)
+
+    #print("Testing steering")
+    steering_min = 40
+    steering_max = 60
+    speed = 0
+    for steering in range(steering_min, steering_max):
+        a.send_movement_data(speed, steering)
         time.sleep_ms(10)
 
-    for steering in range(100, 0, -1):
-        a.send_movement_data(0, steering)
+    for steering in range(steering_max, steering_min, -1):
+        a.send_movement_data(speed, steering)
         time.sleep_ms(10)
 """

@@ -40,7 +40,7 @@ def draw_debug_visuals(img, primary, left_lane, main_lane_recognition, process_l
     if primary:
         left_lane_color = (0, 0, 255)
         right_lane_color = (0, 255, 0)
-        sec_left_lane_color = (255, 0, 0)
+        sec_left_lane_color = (0, 0, 255)
         sec_right_lane_color = (0, 165, 255)
         process_left_lane_color = (255, 0, 255)
         process_right_lane_color = (255, 255, 0)
@@ -61,9 +61,9 @@ def draw_debug_visuals(img, primary, left_lane, main_lane_recognition, process_l
     # Draws the ignore zone (zone where the car is visible
     draw_ignore_zone(img)
     # Draws the found lane markings
-    draw_lanes(img, left_lane, right_lane, 5, left_lane_color, right_lane_color, line_thickness)
-    if secondary_lane_recognition:
-        draw_lanes(img, sec_left_lane, sec_right_lane, 5, sec_left_lane_color, sec_right_lane_color, line_thickness)
+    #draw_lanes(img, left_lane, right_lane, 1, left_lane_color, right_lane_color, line_thickness)
+    #if secondary_lane_recognition:
+        #draw_lanes(img, sec_left_lane, sec_right_lane, 2, sec_left_lane_color, sec_right_lane_color, line_thickness)
     draw_lanes(img, process_left_lane, process_right_lane, 2, process_left_lane_color, process_right_lane_color, -1)
     # Draws the speed and steering value of the car
     draw_speed(img, speed, primary)
@@ -137,7 +137,7 @@ def draw_ignore_zone(img):
             The image on which to draw the ignore zone.
     """
     x_min, y_min, x_max, y_max = get_ignore_zone()
-    cv2.rectangle(img, (x_min, y_min), (x_max, y_max + 1), (0, 0, 0), 2)
+    cv2.rectangle(img, (x_min, y_min), (x_max, y_max + 1), (50, 50, 50), 2)
 
 
 def draw_search_area(img, lane_recognition):
@@ -226,9 +226,14 @@ def draw_steering(img, steering_angle, primary):
     line_end_x = line_start_x + line_length
     cv2.line(img, (line_start_x, y_position), (line_end_x, y_position), color, 1)
 
+from Software.Camera.lane_recognition.FinishLineDetection import FinishLineDetection
+fld = FinishLineDetection(get_pixel_getter("virtual_cam"))
+
 def make_image_binary(img, gray, threshold, lane_rec):    #checks whole image except ignore zone for dark pixels and makes it black/white
     x_min, y_min, x_max, y_max = get_ignore_zone()
-    img = lane_rec.create_binary_image(gray, img)
+    #lane_rec.create_binary_image(gray, img)
+    #fld.create_binary_image(gray, img)
+
     """for x in range(0, 319):
         for y in range(0, 239):
             pixel_color = (0, 0, 0)
@@ -465,7 +470,7 @@ def process_frame(img, main_lane_recognition, secondary_lane_recognition, moveme
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Video processing
-
+    check_for_finish_line(gray)
     speed, steering, left_lane, right_lane, sec_left_lane, sec_right_lane, process_left_lane, process_right_lane \
         = set_speed_and_steering(gray, main_lane_recognition, secondary_lane_recognition, movement_params, return_lanes=True)
 
@@ -630,7 +635,7 @@ def start():
         - Input video file must be in the specified input directory and have a valid format (e.g., ".mp4").
     """
     pixel_getter = get_pixel_getter('virtual_cam')  # Do NOT change
-    main_lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance)
+    main_lane_recognition, secondary_lane_recognition = setup_lane_recognition(pixel_getter, get_lane_recognition_instance, get_finish_line_detection_instance)
     movement_params = setup_movement_params(get_movement_params_instance)
 
     # region Config

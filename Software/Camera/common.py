@@ -1,13 +1,16 @@
+FinishLineDetection = None
+FinishLineDetected = False
+
 def get_settings():
     """
     Returns the values used for version and algorithm names
-    Usable lane_recognition values: CenterLaneFinder, BaseInitiatedDarknessFinder, BaseInitiatedContrastFinder, BaseInitMarc, SobelEdgeDetection
+    Usable lane_recognition values: CenterLaneFinder, BaseInitiatedDarknessFinder, BaseInitiatedContrastFinder, BaseInitMarc, SobelEdgeDetection, (SobelLaneDistanceDetector)
     Usable movement_params values: CenterLaneDeviationDriver, CenterDeviationDriver, DominantLaneAngleDriver, AverageAngleDriver, StraightAwareCenterLaneDriver
     """
     return {
-        "version": "0.5.x",
+        "version": "1.0.0",
         "main_lane_recognition": "SobelEdgeDetection",
-        "secondary_lane_recognition": "None",
+        "secondary_lane_recognition": "SobelLaneDistanceDetector",
         "movement_params": "StraightAwareCenterLaneDriver",
     }
 
@@ -67,25 +70,32 @@ def set_speed_and_steering(img, lane_recognition, secondary_lane_recognition, mo
     left_lane, right_lane = lane_recognition.recognize_lanes(img)
     sec_left_lane, sec_right_lane = None, None
     process_left_lane, process_right_lane = left_lane, right_lane
+    """
     if secondary_lane_recognition:
         # Use the secondary algorithm only if the main algorithm doesn't recognize enough Elements
         if len(left_lane) + len(right_lane) < 7:
             sec_left_lane, sec_right_lane = secondary_lane_recognition.recognize_lanes(img)
             process_left_lane = update_lane_data(left_lane, sec_left_lane)
             process_right_lane = update_lane_data(right_lane, sec_right_lane)
-    speed, steering = movement_params.get_movement_params(left_lane, right_lane)
+    """
+    lane_distance = secondary_lane_recognition.recognize_lanes(img)
+    speed, steering = movement_params.get_movement_params(left_lane, right_lane, lane_distance)
+    if FinishLineDetected:
+        speed = 0
     if return_lanes:
-        return int(speed), int(steering), left_lane, right_lane, sec_left_lane, sec_right_lane, process_left_lane, process_right_lane
+        return int(speed), int(steering), left_lane, right_lane, [(lane_distance, 80)], sec_right_lane, process_left_lane, process_right_lane
     return int(speed), int(steering)
 
 
-def setup_lane_recognition(pixel_getter, get_lane_recognition_instance):
+def setup_lane_recognition(pixel_getter, get_lane_recognition_instance, get_finish_line_detection_instance):
     """
     Initializes lane recognition instances and setups pixel data retrieval.
     """
     settings = get_settings()
     main = get_lane_recognition_instance(settings["main_lane_recognition"])
     main.setup(pixel_getter)
+    global FinishLineDetection
+    FinishLineDetection = get_finish_line_detection_instance(pixel_getter)
     secondary = get_lane_recognition_instance(settings["secondary_lane_recognition"])
     if secondary:
         secondary.setup(pixel_getter)
@@ -98,3 +108,11 @@ def setup_movement_params(get_movement_params_instance, mode = 0):
     """
     settings = get_settings()
     return get_movement_params_instance(settings["movement_params"], mode)
+
+def check_for_finish_line(img):
+    return
+    global FinishLineDetected
+    if not FinishLineDetected:
+        if FinishLineDetection.check_for_finish_line(img):
+            print("Finish line detected.")
+            FinishLineDetected = True

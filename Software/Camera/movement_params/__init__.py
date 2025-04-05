@@ -1,8 +1,8 @@
 from .CenterDeviationDriver import CenterDeviationDriver
 from .DominantLaneAngleDriver import DominantLaneAngleDriver
 from .AverageAngleDriver import AverageAngleDriver
-from .DeviationDriver import CenterLaneDeviationDriver
-from .DeviationDriver import StraightAwareCenterLaneDriver
+from .CenterLaneDeviationDriver import CenterLaneDeviationDriver
+from .StraightAwareCenterLaneDriver import StraightAwareCenterLaneDriver
 
 def get_movement_params_instance(instance, driving_mode):
     """

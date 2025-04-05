@@ -1,15 +1,15 @@
 # Constants
 
-CONSECUTIVE_PIXELS = 3 # Number of pixels in a row for it to count as an edge
+CONSECUTIVE_PIXELS = 2 # Number of pixels in a row for it to count as an edge
 MAX_CONSECUTIVE_PIXELS = CONSECUTIVE_PIXELS * 4 # If the consecutive pixels exceed this value it won't be counted as a lane
 THRESHOLD = 85 # Darkness Threshold, can be a constant but can also change dynamically
-DIRECTION_CHANGE_THRESHOLD = 50 # How far the border can move in a direction to still count as the other lane
+DIRECTION_CHANGE_THRESHOLD = 25 # How far the border can move in a direction to still count as the other lane
 PAST_DIRECTION_CHANGE_SAVING = 10 # For how long past lanes should be saved
 COUNT_PAST_DIRECTION_CHANGE = 0
-CHECK_HEIGHT = 120 # 0-239 0: Top of image 239: Bottom
+CHECK_HEIGHT = 60 # 0-239 0: Top of image 239: Bottom
 MAX_ITERATIONS = 8
-HEIGHT = 240
-WIDTH = 320
+HEIGHT = 120
+WIDTH = 160
 
 
 LAST_LEFT_LANE = None
@@ -269,3 +269,14 @@ class CenterLaneFinder:
             # Calculate the middle point of the element
             edge = (y, (2 * first_x + consecutive_count) // 2)
         return edge
+
+    def create_binary_image(self, img, canvas):
+        # Temporary, until virtual_cam.py / make_image_binary is improved to don't use the brightness values
+        for y in range(1, HEIGHT - 2):
+            for x in range(1, WIDTH - 2):
+                pixel = self.pixel_getter.get_pixel(img, x, y)
+                if pixel > THRESHOLD:
+                    color = (255, 255, 255)
+                else:
+                    color = (0, 0, 0)
+                canvas[y, x] = color
