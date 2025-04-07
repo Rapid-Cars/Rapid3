@@ -49,3 +49,14 @@ class I2CTeensy:
             with open("/sdcard/i2c_log.txt", "a") as log:
                 log.write("I2C Error: " + str(exception) + "\n")
             self.setup_new_communication()
+
+
+# Example usage
+i2c_teensy = I2CTeensy()
+speed, steering = 0, 0
+while True:
+    speed += 1
+    steering += 2
+    if speed > 100: speed = 0
+    if steering > 100: steering = 0
+    i2c_teensy.send_movement_data(speed, steering)

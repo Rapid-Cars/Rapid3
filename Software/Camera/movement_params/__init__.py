@@ -1,7 +1,3 @@
-from .CenterDeviationDriver import CenterDeviationDriver
-from .DominantLaneAngleDriver import DominantLaneAngleDriver
-from .AverageAngleDriver import AverageAngleDriver
-from .CenterLaneDeviationDriver import CenterLaneDeviationDriver
 from .StraightAwareCenterLaneDriver import StraightAwareCenterLaneDriver
 
 def get_movement_params_instance(instance, driving_mode):
@@ -25,15 +21,7 @@ def get_movement_params_instance(instance, driving_mode):
     ValueError
         If the 'instance' parameter does not match any known class name.
     """
-    if instance == 'CenterDeviationDriver':
-        return CenterDeviationDriver(driving_mode)
-    elif instance == 'DominantLaneAngleDriver':
-        return DominantLaneAngleDriver(driving_mode)
-    elif instance == 'AverageAngleDriver':
-        return AverageAngleDriver(driving_mode)
-    elif instance == 'CenterLaneDeviationDriver':
-        return CenterLaneDeviationDriver(driving_mode)
-    elif instance == 'StraightAwareCenterLaneDriver':
+    if instance == 'StraightAwareCenterLaneDriver':
         return StraightAwareCenterLaneDriver(driving_mode)
     # You can implement new instances here
     else:
@@ -55,10 +43,6 @@ def get_movement_params_id(instance_name):
             int: The numeric ID corresponding to the instance name, or -1 if the name is not found.
     """
     movement_algorithm_id = {
-        "CenterDeviationDriver": 0,
-        "DominantLaneAngleDriver": 1,
-        "AverageAngleDriver": 2,
-        "CenterLaneDeviationDriver": 3,
         "StraightAwareCenterLaneDriver": 4
     }.get(instance_name, -1)  # Default to -1 if not found
     return movement_algorithm_id

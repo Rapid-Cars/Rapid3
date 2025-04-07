@@ -1,6 +1,3 @@
-from .CenterLaneFinder import CenterLaneFinder
-from .BaseInitiatedFinder import BaseInitiatedContrastFinder, BaseInitiatedDarknessFinder
-from .BaseInitMarc import BaseInitMarc
 from .SobelEdgeDetection import SobelEdgeDetection
 from .SobelContinuousLaneFinder import SobelContinuousLaneFinder
 from .SobelLaneDistanceDetector import SobelLaneDistanceDetector
@@ -87,7 +84,7 @@ def get_lane_recognition_instance(instance):
 
     Parameters:
         instance: str
-            A string identifier for the lane recognition class to instantiate (e.g. 'BaseInitiatedDarknessFinder' or 'CenterLaneFinder'). If a
+            A string identifier for the lane recognition class to instantiate (e.g. 'SobelEdgeDetection'). If a
             unknown value is provided, the function will raise a ValueError.
 
     Returns:
@@ -104,14 +101,6 @@ def get_lane_recognition_instance(instance):
     """
     if instance == 'None':
         return None
-    elif instance == 'BaseInitiatedDarknessFinder':
-        return BaseInitiatedDarknessFinder()
-    elif instance == 'CenterLaneFinder':
-        return CenterLaneFinder()
-    elif instance == 'BaseInitiatedContrastFinder':
-        return BaseInitiatedContrastFinder()
-    elif instance == 'BaseInitMarc':
-        return BaseInitMarc()
     elif instance == 'SobelEdgeDetection':
         return SobelEdgeDetection()
     elif instance == "SobelContinuousLaneFinder":
@@ -138,10 +127,6 @@ def get_lane_recognition_id(instance_name):
                 int: The numeric ID corresponding to the instance name, or -1 if the name is not found.
         """
     lane_recognition_id = {
-        "BaseInitiatedDarknessFinder": 0,
-        "CenterLaneFinder": 1,
-        "BaseInitiatedContrastFinder": 2,
-        "BaseInitMarc": 3,
         "SobelEdgeDetection": 4,
         "SobelContinuousLaneFinder": 5,
         "SobelLaneDistanceDetector": 6,

@@ -4,8 +4,8 @@ FinishLineDetected = False
 def get_settings():
     """
     Returns the values used for version and algorithm names
-    Usable lane_recognition values: CenterLaneFinder, BaseInitiatedDarknessFinder, BaseInitiatedContrastFinder, BaseInitMarc, SobelEdgeDetection, (SobelLaneDistanceDetector)
-    Usable movement_params values: CenterLaneDeviationDriver, CenterDeviationDriver, DominantLaneAngleDriver, AverageAngleDriver, StraightAwareCenterLaneDriver
+    Usable lane_recognition values: SobelEdgeDetection, (SobelLaneDistanceDetector)
+    Usable movement_params values: StraightAwareCenterLaneDriver
     """
     return {
         "version": "1.0.0",
